@@ -1,0 +1,29 @@
+site_name: "mkdocs-autorefs"
+site_description: "Automatically link across pages in MkDocs."
+site_url: "https://mkdocstrings.github.io/autorefs"
+repo_url: "https://github.com/mkdocstrings/autorefs"
+
+nav:
+- Overview: index.md
+- Contributing: contributing.md
+- Code of Conduct: code_of_conduct.md
+- License: license.md
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: teal
+    accent: purple
+
+markdown_extensions:
+- admonition
+- pymdownx.emoji
+- pymdownx.magiclink
+- pymdownx.snippets:
+    check_paths: true
+- pymdownx.superfences
+- pymdownx.tabbed
+- pymdownx.tasklist
+- toc:
+    permalink: "¤"
