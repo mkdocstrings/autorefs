@@ -6,6 +6,47 @@
 
 Automatically link across pages in MkDocs.
 
+## Installation
+
+With `pip`:
+```bash
+python3 -m pip install mkdocs-autorefs
+```
+
+## Usage
+
+```yaml
+# mkdocs.yml
+plugins:
+  - search
+  - autorefs
+```
+
+In one of your Markdown files (e.g. `doc1.md`) create some headings:
+
+```markdown
+## Hello, world!
+
+## Another heading
+
+Link to [Hello, World!](#hello-world) on the same page.
+```
+
+This is a [*normal* link to an anchor](https://www.mkdocs.org/user-guide/writing-your-docs/#linking-to-pages). MkDocs generates anchors for each heading, and they can always be used to link to something, either within the same page (as shown here) or by specifying the path of the other page.
+
+But with this plugin, you can **link to a heading from any other page** on the site *without* needing to know the path of either of the pages, just the heading title itself.  
+Let's create another Markdown page to try this, `subdir/doc2.md`:
+
+```markdown
+We can [link to that heading][hello-world] from another page too.
+
+This works the same as [a normal link to that heading](../doc1.md#hello-world).
+```
+
+Linking to a heading without needing to know the destination page can be useful if specifying that path is cumbersome, e.g. when the pages have deeply nested paths, are far apart, or are moved around frequently. And the issue is somewhat exacerbated by the fact that [MkDocs supports only *relative* links between pages](https://github.com/mkdocs/mkdocs/issues/1592).
+
+Note that this plugin's behavior is undefined when trying to link to a heading title that appears several times throughout the site. Currently it arbitrarily chooses one of the pages.
+
 ## Requirements
 
 `mkdocs-autorefs` requires Python 3.6 or above.
@@ -29,10 +70,3 @@ pyenv install 3.6.12
 pyenv global system 3.6.12
 ```
 </details>
-
-## Installation
-
-With `pip`:
-```bash
-python3.6 -m pip install mkdocs-autorefs
-```
