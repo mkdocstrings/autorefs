@@ -222,15 +222,22 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#requirements" class="md-nav__link">
-    Requirements
+  <a href="#installation" class="md-nav__link">
+    Installation
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    Installation
+  <a href="#usage" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    Requirements
   </a>
   
 </li>
@@ -302,15 +309,22 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#requirements" class="md-nav__link">
-    Requirements
+  <a href="#installation" class="md-nav__link">
+    Installation
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    Installation
+  <a href="#usage" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    Requirements
   </a>
   
 </li>
@@ -340,6 +354,32 @@
 <a href="https://pypi.org/project/mkdocs-autorefs/"><img alt="pypi version" src="https://img.shields.io/pypi/v/mkdocs-autorefs.svg" /></a>
 <a href="https://gitter.im/mkdocstrings/community"><img alt="gitter" src="https://badges.gitter.im/join%20chat.svg" /></a></p>
 <p>Automatically link across pages in MkDocs.</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">¤</a></h2>
+<p>With <code>pip</code>:
+<div class="highlight"><pre><span></span><code>python3 -m pip install mkdocs-autorefs
+</code></pre></div></p>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">¤</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># mkdocs.yml</span>
+<span class="nt">plugins</span><span class="p">:</span>
+  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">search</span>
+  <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">autorefs</span>
+</code></pre></div>
+<p>In one of your Markdown files (e.g. <code>doc1.md</code>) create some headings:</p>
+<div class="highlight"><pre><span></span><code><span class="gu">## Hello, world!</span>
+
+<span class="gu">## Another heading</span>
+
+Link to [<span class="nt">Hello, World!</span>](<span class="na">#hello-world</span>) on the same page.
+</code></pre></div>
+<p>This is a <a href="https://www.mkdocs.org/user-guide/writing-your-docs/#linking-to-pages"><em>normal</em> link to an anchor</a>. MkDocs generates anchors for each heading, and they can always be used to link to something, either within the same page (as shown here) or by specifying the path of the other page.</p>
+<p>But with this plugin, you can <strong>link to a heading from any other page</strong> on the site <em>without</em> needing to know the path of either of the pages, just the heading title itself.<br />
+Let's create another Markdown page to try this, <code>subdir/doc2.md</code>:</p>
+<div class="highlight"><pre><span></span><code>We can [<span class="nt">link to that heading</span>][<span class="nl">hello-world</span>] from another page too.
+
+This works the same as [<span class="nt">a normal link to that heading</span>](<span class="na">../doc1.md#hello-world</span>).
+</code></pre></div>
+<p>Linking to a heading without needing to know the destination page can be useful if specifying that path is cumbersome, e.g. when the pages have deeply nested paths, are far apart, or are moved around frequently. And the issue is somewhat exacerbated by the fact that <a href="https://github.com/mkdocs/mkdocs/issues/1592">MkDocs supports only <em>relative</em> links between pages</a>.</p>
+<p>Note that this plugin's behavior is undefined when trying to link to a heading title that appears several times throughout the site. Currently it arbitrarily chooses one of the pages.</p>
 <h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">¤</a></h2>
 <p><code>mkdocs-autorefs</code> requires Python 3.6 or above.</p>
 <details>
@@ -360,11 +400,6 @@ pyenv install <span class="m">3</span>.6.12
 pyenv global system <span class="m">3</span>.6.12
 </code></pre></div>
 </details>
-
-<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">¤</a></h2>
-<p>With <code>pip</code>:
-<div class="highlight"><pre><span></span><code>python3.6 -m pip install mkdocs-autorefs
-</code></pre></div></p>
                 
               
               
