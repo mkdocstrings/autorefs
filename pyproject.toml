@@ -25,6 +25,7 @@ include = [
 python = "^3.6"
 Markdown = "^3.3"
 mkdocs = "^1.1"
+importlib_metadata = {version = "^4.0", python = "<3.8"}
 
 [tool.poetry.dev-dependencies]
 autoflake = "^1.4"

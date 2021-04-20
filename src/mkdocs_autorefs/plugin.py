@@ -10,11 +10,22 @@ this plugin searches for references of the form `[identifier][]` or `[title][ide
 and fixes them using the previously stored identifier-URL mapping.
 """
 
+import collections
+import concurrent.futures
 import functools
+import gzip
 import logging
-from typing import Callable, Dict, Optional
+import sys
+import urllib.request
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
-from mkdocs.config import Config
+if sys.version_info >= (3, 8):
+    import importlib.metadata as importlib_metadata
+else:
+    import importlib_metadata
+
+from mkdocs.config import Config, config_options
+from mkdocs.config.base import ValidationError
 from mkdocs.plugins import BasePlugin
 from mkdocs.structure.pages import Page
 from mkdocs.structure.toc import AnchorLink
@@ -24,6 +35,40 @@ from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
 log = logging.getLogger(f"mkdocs.plugins.{__name__}")
 log.addFilter(warning_filter)
+
+
+_HandlerConfig = collections.namedtuple("_HandlerConfig", "handler items")
+
+
+class _HandlersConfig(config_options.OptionallyRequired):
+    """MkDocs config item representing a dictionary from handler name to list of URLs."""
+
+    @classmethod
+    @functools.lru_cache(maxsize=None)
+    def _get_handler(cls, name: str) -> Optional[Any]:
+        """Load a handler as a plugin / entry point under 'mkdocs_autorefs.handlers'."""
+        for h in importlib_metadata.entry_points().get("mkdocs_autorefs.handlers", ()):
+            if h.name == name:
+                return h.load()
+        return None
+
+    def run_validation(self, value):
+        if not isinstance(value, dict):
+            raise ValidationError(f"Expected a dict, got {type(value)}")
+
+        result: List[_HandlerConfig] = []
+
+        for handler_name, items in value.items():
+            if not isinstance(items, list) or not items:
+                raise ValidationError(f"Expected a list as the value for {handler_name!r}, got {type(items)}")
+
+            handler = self._get_handler(handler_name)
+            if handler is None:
+                raise ValidationError(f"{handler_name!r} is not installed as a plugin for 'mkdocs_autorefs.handlers'")
+
+            result.append(_HandlerConfig(handler, items))
+
+        return result
 
 
 class AutorefsPlugin(BasePlugin):
@@ -39,6 +84,8 @@ class AutorefsPlugin(BasePlugin):
     for more information about its plugin system.
     """
 
+    config_scheme: Tuple[Tuple[str, config_options.Type]] = (("import", _HandlersConfig()),)
+
     scan_toc: bool = True
     current_page: Optional[str] = None
 
@@ -47,6 +94,8 @@ class AutorefsPlugin(BasePlugin):
         super().__init__()
         self._url_map: Dict[str, str] = {}
         self._abs_url_map: Dict[str, str] = {}
+        self._inv_url_map: Optional[Mapping[str, str]] = None
+        self._inv_futures: List[concurrent.futures.Future] = []
         self.get_fallback_anchor: Optional[Callable[[str], Optional[str]]] = None
 
     def register_anchor(self, page: str, identifier: str):
@@ -93,6 +142,10 @@ class AutorefsPlugin(BasePlugin):
                 new_identifier = fallback(identifier)
                 if new_identifier:
                     return self.get_item_url(new_identifier, from_url)
+
+            new_url = self._get_inventory_item_url(identifier)
+            if new_url is not None:
+                return new_url
 
             raise
 
@@ -200,3 +253,51 @@ class AutorefsPlugin(BasePlugin):
                 )
 
         return fixed_output
+
+    # Inventory fetching code
+
+    def on_pre_build(self, config: Config) -> None:  # noqa: W0613 (unused arguments)
+        """Before a build, start background tasks to download and process inventory files."""
+        if self.config.get("import"):
+            inv_loader = concurrent.futures.ThreadPoolExecutor(4)
+            self._inv_futures = [
+                inv_loader.submit(self._load_inventory, handler, url)
+                for handler, urls in self.config["import"]
+                for url in urls
+            ]
+            inv_loader.shutdown(wait=False)
+
+    @classmethod
+    @functools.lru_cache(maxsize=None)
+    def _load_inventory(cls, handler, url: str) -> Mapping[str, str]:
+        """Download and process inventory files using a handler.
+
+        Arguments:
+            handler: An object responding to the method `list_object_urls`, returning a sequence of pairs.
+            url: The URL to download and process.
+
+        Returns:
+            A mapping from identifier to absolute URL.
+        """
+        log.debug(f"{__name__}: Downloading inventory from {url!r}")
+        req = urllib.request.Request(url, headers={"Accept-Encoding": "gzip"})
+        with urllib.request.urlopen(req) as resp:  # noqa: S310 (URL audit OK: comes from a checked-in config)
+            if "gzip" in resp.headers.get("content-encoding", ""):
+                resp = gzip.GzipFile(fileobj=resp)
+            result = dict(handler.list_object_urls(resp, url=url))
+        log.debug(f"{__name__}: Loaded inventory from {url!r}: {len(result)} items")
+        return result
+
+    def _get_inventory_item_url(self, key: str) -> Optional[str]:
+        # The first time this method is reached, gather results from background tasks.
+        if self._inv_url_map is None:
+            concurrent.futures.wait(self._inv_futures, timeout=30)
+            self._inv_url_map = collections.ChainMap(*(f.result() for f in self._inv_futures))
+            self._inv_futures = []
+
+        return self._inv_url_map.get(key)
+
+    def on_post_build(self, config: Config) -> None:  # noqa: W0613 (unused arguments)
+        """After an MkDocs build, if the inventory was never needed, cancel background tasks."""
+        for f in self._inv_futures:
+            f.cancel()
