@@ -10,8 +10,7 @@ from markdown.extensions import Extension
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
 
 AUTO_REF_RE = re.compile(r'<span data-mkdocstrings-identifier=("?)(?P<identifier>[^"<>]*)\1>(?P<title>.*?)</span>')
-"""
-A regular expression to match mkdocs-autorefs' special reference markers
+"""A regular expression to match mkdocs-autorefs' special reference markers
 in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page].
 """
 
@@ -28,8 +27,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
     # https://github.com/Python-Markdown/markdown/blob/8e7528fa5c98bf4652deb13206d6e6241d61630b/markdown/inlinepatterns.py#L780
 
     def handleMatch(self, m, data) -> Union[Element, EvalIDType]:  # noqa: N802 (parent's casing)
-        """
-        Handle an element that matched.
+        """Handle an element that matched.
 
         Arguments:
             m: The match object.
@@ -56,8 +54,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
         return self.makeTag(identifier, text), m.start(0), end
 
     def evalId(self, data: str, index: int, text: str) -> EvalIDType:  # noqa: N802 (parent's casing)
-        """
-        Evaluate the id portion of `[ref][id]`.
+        """Evaluate the id portion of `[ref][id]`.
 
         If `[ref][]` use `[ref]`.
 
@@ -77,8 +74,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
         return identifier, end, True
 
     def makeTag(self, identifier: str, text: str) -> Element:  # noqa: N802,W0221 (parent's casing, different params)
-        """
-        Create a tag that can be matched by `AUTO_REF_RE`.
+        """Create a tag that can be matched by `AUTO_REF_RE`.
 
         Arguments:
             identifier: The identifier to use in the HTML property.
@@ -94,8 +90,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
 
 
 def relative_url(url_a: str, url_b: str) -> str:
-    """
-    Compute the relative path from URL A to URL B.
+    """Compute the relative path from URL A to URL B.
 
     Arguments:
         url_a: URL A.
@@ -121,8 +116,7 @@ def relative_url(url_a: str, url_b: str) -> str:
 
 
 def fix_ref(url_mapper: Callable[[str], str], from_url: str, unmapped: List[str]) -> Callable:
-    """
-    Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
+    """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
     In our context, we match Markdown references and replace them with HTML links.
 
@@ -163,8 +157,7 @@ def fix_refs(
     from_url: str,
     url_mapper: Callable[[str], str],
 ) -> Tuple[str, List[str]]:
-    """
-    Fix all references in the given HTML text.
+    """Fix all references in the given HTML text.
 
     Arguments:
         html: The text to fix.
@@ -184,8 +177,7 @@ class AutorefsExtension(Extension):
     """Extension that inserts auto-references in Markdown."""
 
     def extendMarkdown(self, md: Markdown) -> None:  # noqa: N802 (casing: parent method's name)
-        """
-        Register the extension.
+        """Register the extension.
 
         Add an instance of our [`AutoRefInlineProcessor`][mkdocs_autorefs.references.AutoRefInlineProcessor] to the Markdown parser.
 

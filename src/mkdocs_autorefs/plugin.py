@@ -1,5 +1,4 @@
-"""
-This module contains the "mkdocs-autorefs" plugin.
+"""This module contains the "mkdocs-autorefs" plugin.
 
 After each page is processed by the Markdown converter, this plugin stores absolute URLs of every HTML anchors
 it finds to later be able to fix unresolved references.
@@ -27,8 +26,7 @@ log.addFilter(warning_filter)
 
 
 class AutorefsPlugin(BasePlugin):
-    """
-    An `mkdocs` plugin.
+    """An `mkdocs` plugin.
 
     This plugin defines the following event hooks:
 
@@ -50,8 +48,7 @@ class AutorefsPlugin(BasePlugin):
         self.get_fallback_anchor: Callable[[str], Optional[str]] = lambda identifier: None
 
     def register_anchor(self, page: str, anchor: str):
-        """
-        Register that an anchor corresponding to an identifier was encountered when rendering the page.
+        """Register that an anchor corresponding to an identifier was encountered when rendering the page.
 
         Arguments:
             page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
@@ -60,8 +57,7 @@ class AutorefsPlugin(BasePlugin):
         self._url_map[anchor] = f"{page}#{anchor}"
 
     def get_item_url(self, anchor: str) -> str:
-        """
-        Return a site-relative URL with anchor to the identifier, if it's present anywhere.
+        """Return a site-relative URL with anchor to the identifier, if it's present anywhere.
 
         Arguments:
             anchor: The anchor (without '#').
@@ -81,8 +77,7 @@ class AutorefsPlugin(BasePlugin):
             raise
 
     def on_config(self, config: Config, **kwargs) -> Config:  # noqa: W0613,R0201 (unused arguments, cannot be static)
-        """
-        Instantiate our Markdown extension.
+        """Instantiate our Markdown extension.
 
         Hook for the [`on_config` event](https://www.mkdocs.org/user-guide/plugins/#on_config).
         In this hook, we instantiate our [`AutorefsExtension`][mkdocs_autorefs.references.AutorefsExtension]
@@ -100,8 +95,7 @@ class AutorefsPlugin(BasePlugin):
         return config
 
     def on_page_markdown(self, markdown: str, page: Page, **kwargs) -> str:  # noqa: W0613 (unused arguments)
-        """
-        Remember which page is the current one.
+        """Remember which page is the current one.
 
         Arguments:
             markdown: Input Markdown.
@@ -115,8 +109,7 @@ class AutorefsPlugin(BasePlugin):
         return markdown
 
     def on_page_content(self, html: str, page: Page, **kwargs) -> str:  # noqa: W0613 (unused arguments)
-        """
-        Map anchors to URLs.
+        """Map anchors to URLs.
 
         Hook for the [`on_page_content` event](https://www.mkdocs.org/user-guide/plugins/#on_page_content).
         In this hook, we map the IDs of every anchor found in the table of contents to the anchors absolute URLs.
@@ -138,8 +131,7 @@ class AutorefsPlugin(BasePlugin):
         return html
 
     def map_urls(self, base_url: str, anchor: AnchorLink) -> None:
-        """
-        Recurse on every anchor to map its ID to its absolute URL.
+        """Recurse on every anchor to map its ID to its absolute URL.
 
         This method populates `self.url_map` by side-effect.
 
@@ -152,8 +144,7 @@ class AutorefsPlugin(BasePlugin):
             self.map_urls(base_url, child)
 
     def on_post_page(self, output: str, page: Page, **kwargs) -> str:  # noqa: W0613 (unused arguments)
-        """
-        Fix cross-references.
+        """Fix cross-references.
 
         Hook for the [`on_post_page` event](https://www.mkdocs.org/user-guide/plugins/#on_post_page).
         In this hook, we try to fix unresolved references of the form `[title][identifier]` or `[identifier][]`.
