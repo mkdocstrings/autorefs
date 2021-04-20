@@ -31,20 +31,12 @@ from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
     ],
 )
 def test_relative_url(current_url, to_url, href_url):
-    """
-    Compute relative URLs correctly.
-
-    Arguments:
-        current_url: The URL of the source page.
-        to_url: The URL of the target page.
-        href_url: The relative URL to put in the `href` HTML field.
-    """
+    """Compute relative URLs correctly."""
     assert relative_url(current_url, to_url) == href_url
 
 
 def run_references_test(url_map, source, output, unmapped=None, from_url="page.html"):
-    """
-    Help running tests about references.
+    """Help running tests about references.
 
     Arguments:
         url_map: The URL mapping.
