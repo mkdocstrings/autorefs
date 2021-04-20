@@ -125,7 +125,7 @@ def relative_url(url_a: str, url_b: str) -> str:
     return f"{relative}#{anchor}"
 
 
-def fix_ref(url_mapper: Callable[[str], str], from_url: str, unmapped: List[str]) -> Callable:
+def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
     In our context, we match Markdown references and replace them with HTML links.
@@ -137,7 +137,6 @@ def fix_ref(url_mapper: Callable[[str], str], from_url: str, unmapped: List[str]
     Arguments:
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
-        from_url: The URL of the base page, from which we link towards the targeted pages.
         unmapped: A list to store unmapped identifiers.
 
     Returns:
@@ -150,7 +149,7 @@ def fix_ref(url_mapper: Callable[[str], str], from_url: str, unmapped: List[str]
         title = match["title"]
 
         try:
-            url = relative_url(from_url, url_mapper(unescape(identifier)))
+            url = url_mapper(unescape(identifier))
         except KeyError:
             unmapped.append(identifier)
             if title == identifier:
@@ -162,16 +161,11 @@ def fix_ref(url_mapper: Callable[[str], str], from_url: str, unmapped: List[str]
     return inner
 
 
-def fix_refs(
-    html: str,
-    from_url: str,
-    url_mapper: Callable[[str], str],
-) -> Tuple[str, List[str]]:
+def fix_refs(html: str, url_mapper: Callable[[str], str]) -> Tuple[str, List[str]]:
     """Fix all references in the given HTML text.
 
     Arguments:
         html: The text to fix.
-        from_url: The URL at which this HTML is served.
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
 
@@ -179,7 +173,7 @@ def fix_refs(
         The fixed HTML.
     """
     unmapped = []  # type: ignore
-    html = AUTO_REF_RE.sub(fix_ref(url_mapper, from_url, unmapped), html)
+    html = AUTO_REF_RE.sub(fix_ref(url_mapper, unmapped), html)
     return html, unmapped
 
 
