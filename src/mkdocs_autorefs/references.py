@@ -8,6 +8,7 @@ from xml.etree.ElementTree import Element
 from markdown import Markdown
 from markdown.extensions import Extension
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
+from markdown.util import INLINE_PLACEHOLDER_RE
 
 AUTO_REF_RE = re.compile(r'<span data-mkdocstrings-identifier=("?)(?P<identifier>[^"<>]*)\1>(?P<title>.*?)</span>')
 """A regular expression to match mkdocs-autorefs' special reference markers
@@ -69,7 +70,16 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
         m = self.RE_LINK.match(data, pos=index)
         if not m:
             return None, index, False
-        identifier = m.group(1) or text
+
+        identifier = m.group(1)
+        if not identifier:
+            identifier = text
+            # Allow the entire content to be one placeholder, with the intent of catching things like [`Foo`][].
+            # It doesn't catch [*Foo*][] though, just due to the priority order.
+            # https://github.com/Python-Markdown/markdown/blob/1858c1b601ead62ed49646ae0d99298f41b1a271/markdown/inlinepatterns.py#L78
+            if INLINE_PLACEHOLDER_RE.fullmatch(identifier):
+                identifier = self.unescape(identifier)
+
         end = m.end(0)
         return identifier, end, True
 

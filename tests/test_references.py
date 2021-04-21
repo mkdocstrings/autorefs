@@ -66,7 +66,16 @@ def test_reference_explicit_with_markdown_text():
     """Check explicit references with Markdown formatting."""
     run_references_test(
         url_map={"Foo": "foo.html#Foo"},
-        source="This [`Foo`][Foo].",
+        source="This [**Foo**][Foo].",
+        output='<p>This <a href="foo.html#Foo"><strong>Foo</strong></a>.</p>',
+    )
+
+
+def test_reference_implicit_with_code():
+    """Check implicit references (identifier only, wrapped in backticks)."""
+    run_references_test(
+        url_map={"Foo": "foo.html#Foo"},
+        source="This [`Foo`][].",
         output='<p>This <a href="foo.html#Foo"><code>Foo</code></a>.</p>',
     )
 
@@ -121,18 +130,27 @@ def test_missing_reference_with_markdown_text():
 def test_missing_reference_with_markdown_id():
     """Check unmapped explicit references with Markdown in the identifier."""
     run_references_test(
-        url_map={"NotFoo": "foo.html#NotFoo"},
-        source="[Foo][*oh*]",
-        output="<p>[Foo][*oh*]</p>",
-        unmapped=["*oh*"],
+        url_map={"Foo": "foo.html#Foo", "NotFoo": "foo.html#NotFoo"},
+        source="[Foo][*NotFoo*]",
+        output="<p>[Foo][*NotFoo*]</p>",
+        unmapped=["*NotFoo*"],
     )
 
 
 def test_missing_reference_with_markdown_implicit():
     """Check that implicit references are not fixed when the identifier is not the exact one."""
     run_references_test(
-        url_map={"Foo": "foo.html#Foo"},
-        source="[`Foo`][]",
-        output="<p>[<code>Foo</code>][]</p>",
-        unmapped=[],
+        url_map={"Foo-bar": "foo.html#Foo-bar"},
+        source="[*Foo-bar*][] and [`Foo`-bar][]",
+        output="<p>[<em>Foo-bar</em>][*Foo-bar*] and [<code>Foo</code>-bar][]</p>",
+        unmapped=["*Foo-bar*"],
+    )
+
+
+def test_ignore_reference_with_special_char():
+    """Check that references are not considered if there is a space character inside."""
+    run_references_test(
+        url_map={"a b": "foo.html#Foo"},
+        source="This [*a b*][].",
+        output="<p>This [<em>a b</em>][].</p>",
     )
