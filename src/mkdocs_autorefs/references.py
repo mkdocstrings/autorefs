@@ -10,7 +10,10 @@ from markdown.extensions import Extension
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
 from markdown.util import INLINE_PLACEHOLDER_RE
 
-AUTO_REF_RE = re.compile(r'<span data-mkdocstrings-identifier=("?)(?P<identifier>[^"<>]*)\1>(?P<title>.*?)</span>')
+AUTO_REF_RE = re.compile(
+    r"<span data-(?P<kind>autorefs-identifier|autorefs-optional|mkdocstrings-identifier)="
+    r'("?)(?P<identifier>[^"<>]*)\2>(?P<title>.*?)</span>'
+)
 """A regular expression to match mkdocs-autorefs' special reference markers
 in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page].
 """
@@ -94,7 +97,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
             A new element.
         """
         el = Element("span")
-        el.set("data-mkdocstrings-identifier", identifier)
+        el.set("data-autorefs-identifier", identifier)
         el.text = text
         return el
 
@@ -152,6 +155,8 @@ def fix_ref(url_mapper: Callable[[str], str], from_url: str, unmapped: List[str]
         try:
             url = relative_url(from_url, url_mapper(unescape(identifier)))
         except KeyError:
+            if match["kind"] == "autorefs-optional":
+                return title
             unmapped.append(identifier)
             if title == identifier:
                 return f"[{identifier}][]"
