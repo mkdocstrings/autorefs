@@ -172,7 +172,7 @@ class AutorefsPlugin(BasePlugin):
 
         Hook for the [`on_post_page` event](https://www.mkdocs.org/user-guide/plugins/#on_post_page).
         In this hook, we try to fix unresolved references of the form `[title][identifier]` or `[identifier][]`.
-        Doing that allows the user of `mkdocstrings` to cross-reference objects in their documentation strings.
+        Doing that allows the user of `autorefs` to cross-reference objects in their documentation strings.
         It uses the native Markdown syntax so it's easy to remember and use.
 
         We log a warning for each reference that we couldn't map to an URL, but try to be smart and ignore identifiers

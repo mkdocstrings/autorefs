@@ -167,3 +167,21 @@ def test_ignore_reference_with_special_char():
         source="This [*a b*][].",
         output="<p>This [<em>a b</em>][].</p>",
     )
+
+
+def test_custom_required_reference():
+    """Check that external HTML-based references are expanded or reported missing."""
+    url_map = {"ok": "ok.html#ok"}
+    source = "<span data-autorefs-identifier=bar>foo</span> <span data-autorefs-identifier=ok>ok</span>"
+    output, unmapped = fix_refs(source, url_map.__getitem__)
+    assert output == '[foo][bar] <a href="ok.html#ok">ok</a>'
+    assert unmapped == ["bar"]
+
+
+def test_custom_optional_reference():
+    """Check that optional HTML-based references are expanded and never reported missing."""
+    url_map = {"ok": "ok.html#ok"}
+    source = '<span data-autorefs-optional="bar">foo</span> <span data-autorefs-optional=ok>ok</span>'
+    output, unmapped = fix_refs(source, url_map.__getitem__)
+    assert output == 'foo <a href="ok.html#ok">ok</a>'
+    assert unmapped == []
