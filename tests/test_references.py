@@ -48,7 +48,10 @@ def run_references_test(url_map, source, output, unmapped=None, from_url="page.h
     md = markdown.Markdown(extensions=[AutorefsExtension()])
     content = md.convert(source)
 
-    actual_output, actual_unmapped = fix_refs(content, from_url, url_map.__getitem__)
+    def url_mapper(identifier):
+        return relative_url(from_url, url_map[identifier])
+
+    actual_output, actual_unmapped = fix_refs(content, url_mapper)
     assert actual_output == output
     assert actual_unmapped == (unmapped or [])
 
@@ -86,6 +89,16 @@ def test_reference_with_punctuation():
         url_map={'Foo&"bar': 'foo.html#Foo&"bar'},
         source='This [Foo&"bar][].',
         output='<p>This <a href="foo.html#Foo&amp;&quot;bar">Foo&amp;"bar</a>.</p>',
+    )
+
+
+def test_reference_to_relative_path():
+    """Check references from a page at a nested path."""
+    run_references_test(
+        from_url="sub/sub/page.html",
+        url_map={"zz": "foo.html#zz"},
+        source="This [zz][].",
+        output='<p>This <a href="../../foo.html#zz">zz</a>.</p>',
     )
 
 
@@ -160,7 +173,7 @@ def test_custom_required_reference():
     """Check that external HTML-based references are expanded or reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = "<span data-autorefs-identifier=bar>foo</span> <span data-autorefs-identifier=ok>ok</span>"
-    output, unmapped = fix_refs(source, "page.html", url_map.__getitem__)
+    output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '[foo][bar] <a href="ok.html#ok">ok</a>'
     assert unmapped == ["bar"]
 
@@ -169,6 +182,6 @@ def test_custom_optional_reference():
     """Check that optional HTML-based references are expanded and never reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional="bar">foo</span> <span data-autorefs-optional=ok>ok</span>'
-    output, unmapped = fix_refs(source, "page.html", url_map.__getitem__)
+    output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == 'foo <a href="ok.html#ok">ok</a>'
     assert unmapped == []

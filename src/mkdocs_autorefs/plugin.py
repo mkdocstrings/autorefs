@@ -10,6 +10,7 @@ this plugin searches for references of the form `[identifier][]` or `[title][ide
 and fixes them using the previously stored identifier-URL mapping.
 """
 
+import functools
 import logging
 from typing import Callable, Dict, Optional
 
@@ -19,7 +20,7 @@ from mkdocs.structure.pages import Page
 from mkdocs.structure.toc import AnchorLink
 from mkdocs.utils import warning_filter
 
-from mkdocs_autorefs.references import AutorefsExtension, fix_refs
+from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
 log = logging.getLogger(f"mkdocs.plugins.{__name__}")
 log.addFilter(warning_filter)
@@ -45,22 +46,36 @@ class AutorefsPlugin(BasePlugin):
         """Initialize the object."""
         super().__init__()
         self._url_map: Dict[str, str] = {}
-        self.get_fallback_anchor: Callable[[str], Optional[str]] = lambda identifier: None
+        self._abs_url_map: Dict[str, str] = {}
+        self.get_fallback_anchor: Optional[Callable[[str], Optional[str]]] = None
 
-    def register_anchor(self, page: str, anchor: str):
+    def register_anchor(self, page: str, identifier: str):
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
 
         Arguments:
             page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
-            anchor: The HTML anchor (without '#') as a string.
+            identifier: The HTML anchor (without '#') as a string.
         """
-        self._url_map[anchor] = f"{page}#{anchor}"
+        self._url_map[identifier] = f"{page}#{identifier}"
 
-    def get_item_url(self, anchor: str) -> str:
+    def register_url(self, identifier: str, url: str):
+        """Register that the identifier should be turned into a link to this URL.
+
+        Arguments:
+            identifier: The new identifier.
+            url: The absolute URL (including anchor, if needed) where this item can be found.
+        """
+        self._abs_url_map[identifier] = url
+
+    def get_item_url(
+        self, identifier: str, from_url: Optional[str] = None, fallback: Optional[Callable[[str], Optional[str]]] = None
+    ) -> str:
         """Return a site-relative URL with anchor to the identifier, if it's present anywhere.
 
         Arguments:
-            anchor: The anchor (without '#').
+            identifier: The anchor (without '#').
+            from_url: The URL of the base page, from which we link towards the targeted pages.
+            fallback: An optional function to suggest an alternative anchor to try on failure.
 
         Returns:
             A site-relative URL.
@@ -69,12 +84,21 @@ class AutorefsPlugin(BasePlugin):
             KeyError: If there isn't an item by this identifier anywhere on the site.
         """
         try:
-            return self._url_map[anchor]
+            url = self._url_map[identifier]
         except KeyError:
-            new_anchor = self.get_fallback_anchor(anchor)
-            if new_anchor and new_anchor in self._url_map:
-                return self._url_map[new_anchor]
+            if identifier in self._abs_url_map:
+                return self._abs_url_map[identifier]
+
+            if fallback:
+                new_identifier = fallback(identifier)
+                if new_identifier:
+                    return self.get_item_url(new_identifier, from_url)
+
             raise
+
+        if from_url is not None:
+            return relative_url(from_url, url)
+        return url
 
     def on_config(self, config: Config, **kwargs) -> Config:  # noqa: W0613,R0201 (unused arguments, cannot be static)
         """Instantiate our Markdown extension.
@@ -166,7 +190,8 @@ class AutorefsPlugin(BasePlugin):
         """
         log.debug(f"{__name__}: Fixing references in page {page.file.src_path}")
 
-        fixed_output, unmapped = fix_refs(output, page.url, self.get_item_url)
+        url_mapper = functools.partial(self.get_item_url, from_url=page.url, fallback=self.get_fallback_anchor)
+        fixed_output, unmapped = fix_refs(output, url_mapper)
 
         if unmapped and log.isEnabledFor(logging.WARNING):
             for ref in unmapped:
