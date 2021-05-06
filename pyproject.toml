@@ -16,10 +16,6 @@ repository = "https://github.com/mkdocstrings/autorefs"
 homepage = "https://github.com/mkdocstrings/autorefs"
 keywords = ["mkdocs", "mkdocs-plugin", "docstrings", "autodoc"]
 packages = [ { include = "mkdocs_autorefs", from = "src" } ]
-include = [
-    "README.md",
-    "pyproject.toml"
-]
 
 [tool.poetry.dependencies]
 python = "^3.6"
