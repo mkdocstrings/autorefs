@@ -185,3 +185,12 @@ def test_custom_optional_reference():
     output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == 'foo <a href="ok.html#ok">ok</a>'
     assert unmapped == []
+
+
+def test_custom_optional_hover_reference():
+    """Check that optional-hover HTML-based references are expanded and never reported missing."""
+    url_map = {"ok": "ok.html#ok"}
+    source = '<span data-autorefs-optional-hover="bar">foo</span> <span data-autorefs-optional-hover=ok>ok</span>'
+    output, unmapped = fix_refs(source, url_map.__getitem__)
+    assert output == '<span title="bar">foo</span> <a title="ok" href="ok.html#ok">ok</a>'
+    assert unmapped == []

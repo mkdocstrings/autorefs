@@ -11,7 +11,7 @@ from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
 from markdown.util import INLINE_PLACEHOLDER_RE
 
 AUTO_REF_RE = re.compile(
-    r"<span data-(?P<kind>autorefs-identifier|autorefs-optional|mkdocstrings-identifier)="
+    r"<span data-(?P<kind>autorefs-identifier|autorefs-optional|autorefs-optional-hover)="
     r'("?)(?P<identifier>[^"<>]*)\2>(?P<title>.*?)</span>'
 )
 """A regular expression to match mkdocs-autorefs' special reference markers
@@ -150,17 +150,22 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable:
     def inner(match: Match):
         identifier = match["identifier"]
         title = match["title"]
+        kind = match["kind"]
 
         try:
             url = url_mapper(unescape(identifier))
         except KeyError:
-            if match["kind"] == "autorefs-optional":
+            if kind == "autorefs-optional":
                 return title
+            elif kind == "autorefs-optional-hover":
+                return f'<span title="{identifier}">{title}</span>'
             unmapped.append(identifier)
             if title == identifier:
                 return f"[{identifier}][]"
             return f"[{title}][{identifier}]"
 
+        if kind == "autorefs-optional-hover":
+            return f'<a title="{identifier}" href="{escape(url)}">{title}</a>'
         return f'<a href="{escape(url)}">{title}</a>'
 
     return inner
