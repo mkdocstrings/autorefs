@@ -5,12 +5,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [0.3.0](https://github.com/mkdocstrings/autorefs/releases/tag/0.3.0) - 2021-07-24
+
+<small>[Compare with 0.2.1](https://github.com/mkdocstrings/autorefs/compare/0.2.1...0.3.0)</small>
+
+### Features
+- Add optional-hover ref type ([0288bdd](https://github.com/mkdocstrings/autorefs/commit/0288bdd34f779d73d3da19cfe2a89254fd3c4942) by Brian Koropoff). [PR #10](https://github.com/mkdocstrings/autorefs/pull/10)
+
+
 ## [0.2.1](https://github.com/mkdocstrings/autorefs/releases/tag/0.2.1) - 2021-05-07
 
 <small>[Compare with 0.2.0](https://github.com/mkdocstrings/autorefs/compare/0.2.0...0.2.1)</small>
 
 ### Bug Fixes
-- Prevent error during parallel installations ([c90e399](https://github.com/mkdocstrings/autorefs/commit/c90e399213dec3435bf5dd0a0e5035ba586076fd) by Timothée Mazzucotelli). References: [#9](https://github.com/mkdocstrings/autorefs/issues/9)
+- Prevent error during parallel installations ([c90e399](https://github.com/mkdocstrings/autorefs/commit/c90e399213dec3435bf5dd0a0e5035ba586076fd) by Timothée Mazzucotelli). [PR #9](https://github.com/mkdocstrings/autorefs/pull/9)
 
 
 ## [0.2.0](https://github.com/mkdocstrings/autorefs/releases/tag/0.2.0) - 2021-05-03

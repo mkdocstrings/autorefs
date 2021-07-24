@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "mkdocs-autorefs"
-version = "0.2.1"
+version = "0.3.0"
 description = "Automatically link across pages in MkDocs."
 authors = [
     "Oleh Prypin <oleh@pryp.in>",
