@@ -34,9 +34,14 @@ def test_url_registration_with_fallback():
     plugin.register_anchor(identifier="foo", page="foo1.html")
     plugin.register_url(identifier="bar", url="https://example.org/bar.html")
 
-    assert plugin.get_item_url("baz", fallback=lambda s: "foo") == "foo1.html#foo"
-    assert plugin.get_item_url("baz", fallback=lambda s: "bar") == "https://example.org/bar.html"
+    # URL map will be updated with baz -> foo1.html#foo
+    assert plugin.get_item_url("baz", fallback=lambda s: ("foo",)) == "foo1.html#foo"
+    # as expected, baz is now known as foo1.html#foo
+    assert plugin.get_item_url("baz", fallback=lambda s: ("bar",)) == "foo1.html#foo"
+    # unknown identifiers correctly fallback: qux -> https://example.org/bar.html
+    assert plugin.get_item_url("qux", fallback=lambda s: ("bar",)) == "https://example.org/bar.html"
+
     with pytest.raises(KeyError):
-        plugin.get_item_url("baz", fallback=lambda s: "baaaa")
+        plugin.get_item_url("foobar", fallback=lambda s: ("baaaa",))
     with pytest.raises(KeyError):
-        plugin.get_item_url("baz", fallback=lambda s: None)
+        plugin.get_item_url("foobar", fallback=lambda s: ())

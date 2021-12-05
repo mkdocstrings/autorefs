@@ -10,9 +10,10 @@ this plugin searches for references of the form `[identifier][]` or `[title][ide
 and fixes them using the previously stored identifier-URL mapping.
 """
 
+import contextlib
 import functools
 import logging
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Sequence
 
 from mkdocs.config import Config
 from mkdocs.plugins import BasePlugin
@@ -68,14 +69,14 @@ class AutorefsPlugin(BasePlugin):
         self._abs_url_map[identifier] = url
 
     def get_item_url(
-        self, identifier: str, from_url: Optional[str] = None, fallback: Optional[Callable[[str], Optional[str]]] = None
+        self, identifier: str, from_url: Optional[str] = None, fallback: Optional[Callable[[str], Sequence[str]]] = None
     ) -> str:
         """Return a site-relative URL with anchor to the identifier, if it's present anywhere.
 
         Arguments:
             identifier: The anchor (without '#').
             from_url: The URL of the base page, from which we link towards the targeted pages.
-            fallback: An optional function to suggest an alternative anchor to try on failure.
+            fallback: An optional function to suggest alternative anchors to try on failure.
 
         Returns:
             A site-relative URL.
@@ -90,10 +91,12 @@ class AutorefsPlugin(BasePlugin):
                 return self._abs_url_map[identifier]
 
             if fallback:
-                new_identifier = fallback(identifier)
-                if new_identifier:
-                    return self.get_item_url(new_identifier, from_url)
-
+                new_identifiers = fallback(identifier)
+                for new_identifier in new_identifiers:
+                    with contextlib.suppress(KeyError):
+                        url = self.get_item_url(new_identifier, from_url)
+                        self._url_map[identifier] = url  # update the map to avoid doing all this again
+                        return url
             raise
 
         if from_url is not None:
