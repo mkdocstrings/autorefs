@@ -48,7 +48,7 @@ class AutorefsPlugin(BasePlugin):
         super().__init__()
         self._url_map: Dict[str, str] = {}
         self._abs_url_map: Dict[str, str] = {}
-        self.get_fallback_anchor: Optional[Callable[[str], Optional[str]]] = None
+        self.get_fallback_anchor: Optional[Callable[[str], Optional[str]]] = None  # noqa: WPS234
 
     def register_anchor(self, page: str, identifier: str):
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
@@ -68,8 +68,11 @@ class AutorefsPlugin(BasePlugin):
         """
         self._abs_url_map[identifier] = url
 
-    def get_item_url(
-        self, identifier: str, from_url: Optional[str] = None, fallback: Optional[Callable[[str], Sequence[str]]] = None
+    def get_item_url(  # noqa: WPS234
+        self,
+        identifier: str,
+        from_url: Optional[str] = None,
+        fallback: Optional[Callable[[str], Sequence[str]]] = None,
     ) -> str:
         """Return a site-relative URL with anchor to the identifier, if it's present anywhere.
 
@@ -132,7 +135,7 @@ class AutorefsPlugin(BasePlugin):
         Returns:
             The same Markdown. We only use this hook to map anchors to URLs.
         """
-        self.current_page = page.url
+        self.current_page = page.url  # noqa: WPS601
         return markdown
 
     def on_page_content(self, html: str, page: Page, **kwargs) -> str:  # noqa: W0613 (unused arguments)

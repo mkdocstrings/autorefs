@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
 set -e
 
-PYTHON_VERSIONS="${PYTHON_VERSIONS:-3.6 3.7 3.8 3.9}"
+PYTHON_VERSIONS="${PYTHON_VERSIONS-3.7 3.8 3.9 3.10 3.11}"
+
+restore_previous_python_version() {
+    if pdm use -f "$1" &>/dev/null; then
+        echo "> Restored previous Python version: ${1##*/}"
+    fi
+}
 
 if [ -n "${PYTHON_VERSIONS}" ]; then
+    old_python_version="$(pdm config python.path)"
+    echo "> Currently selected Python version: ${old_python_version##*/}"
+    trap "restore_previous_python_version ${old_python_version}" EXIT
     for python_version in ${PYTHON_VERSIONS}; do
-        if output=$(poetry env use "${python_version}" 2>&1); then
-            if echo "${output}" | grep -q ^Creating; then
-                echo "> Environment for Python ${python_version} not created, skipping" >&2
-                poetry env remove "${python_version}" &>/dev/null || true
-            else
-                echo "> poetry run $@ (Python ${python_version})"
-                poetry run "$@"
-            fi
+        if pdm use -f "python${python_version}" &>/dev/null; then
+        echo "> pdm run $@ (python${python_version})"
+            pdm run "$@"
         else
-            echo "> poetry env use ${python_version}: Python version not available?" >&2
+            echo "> pdm use -f python${python_version}: Python interpreter not available?" >&2
         fi
     done
 else
-    poetry run "$@"
+    pdm run "$@"
 fi

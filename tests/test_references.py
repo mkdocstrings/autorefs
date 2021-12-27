@@ -48,7 +48,7 @@ def run_references_test(url_map, source, output, unmapped=None, from_url="page.h
     md = markdown.Markdown(extensions=[AutorefsExtension()])
     content = md.convert(source)
 
-    def url_mapper(identifier):
+    def url_mapper(identifier):  # noqa: WPS430
         return relative_url(from_url, url_map[identifier])
 
     actual_output, actual_unmapped = fix_refs(content, url_mapper)
@@ -173,7 +173,7 @@ def test_custom_required_reference():
     """Check that external HTML-based references are expanded or reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = "<span data-autorefs-identifier=bar>foo</span> <span data-autorefs-identifier=ok>ok</span>"
-    output, unmapped = fix_refs(source, url_map.__getitem__)
+    output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
     assert output == '[foo][bar] <a href="ok.html#ok">ok</a>'
     assert unmapped == ["bar"]
 
@@ -182,15 +182,15 @@ def test_custom_optional_reference():
     """Check that optional HTML-based references are expanded and never reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional="bar">foo</span> <span data-autorefs-optional=ok>ok</span>'
-    output, unmapped = fix_refs(source, url_map.__getitem__)
+    output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
     assert output == 'foo <a href="ok.html#ok">ok</a>'
-    assert unmapped == []
+    assert unmapped == []  # noqa: WPS520
 
 
 def test_custom_optional_hover_reference():
     """Check that optional-hover HTML-based references are expanded and never reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional-hover="bar">foo</span> <span data-autorefs-optional-hover=ok>ok</span>'
-    output, unmapped = fix_refs(source, url_map.__getitem__)
+    output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
     assert output == '<span title="bar">foo</span> <a title="ok" href="ok.html#ok">ok</a>'
-    assert unmapped == []
+    assert unmapped == []  # noqa: WPS520
