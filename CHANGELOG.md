@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [0.3.1](https://github.com/mkdocstrings/autorefs/releases/tag/0.3.1) - 2021-12-27
+
+<small>[Compare with 0.3.0](https://github.com/mkdocstrings/autorefs/compare/0.3.0...0.3.1)</small>
+
+### Code Refactoring
+- Support fallback method returning multiple identifiers ([0d2b411](https://github.com/mkdocstrings/autorefs/commit/0d2b411030d23cf65c834c6a881ec8d0efddee8c) by Timothée Mazzucotelli). [Issue #11](https://github.com/mkdocstrings/autorefs/issues/11), [PR #12](https://github.com/mkdocstrings/autorefs/pull/12) and [mkdocstrings#350](https://github.com/mkdocstrings/mkdocstrings/pull/350)
+
+
 ## [0.3.0](https://github.com/mkdocstrings/autorefs/releases/tag/0.3.0) - 2021-07-24
 
 <small>[Compare with 0.2.1](https://github.com/mkdocstrings/autorefs/compare/0.2.1...0.3.0)</small>
