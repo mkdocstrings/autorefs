@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Features
 - Allow registering absolute URLs for autorefs ([621686b](https://github.com/mkdocstrings/autorefs/commit/621686b4b36b8d24df80035095700f6a4f96567c) by Oleh Prypin). [PR #8](https://github.com/mkdocstrings/autorefs/pull/8)
 - Allow external tools to insert references that are OK to skip ([7619c28](https://github.com/mkdocstrings/autorefs/commit/7619c2835a63b54b1f5e9e11c5f320c04e3579ac) by Oleh Prypin). [PR #7](https://github.com/mkdocstrings/autorefs/pull/7)
-- Allow [`identifier`][], understood as [`identifier`][identifier] ([2d3182d](https://github.com/mkdocstrings/autorefs/commit/2d3182db54dc33e75914e9c509bbf849842eb70a) by Oleh Prypin). [PR #5](https://github.com/mkdocstrings/autorefs/pull/5)
+- Allow `[``identifier``][]`, understood as `[``identifier``][identifier]` ([2d3182d](https://github.com/mkdocstrings/autorefs/commit/2d3182db54dc33e75914e9c509bbf849842eb70a) by Oleh Prypin). [PR #5](https://github.com/mkdocstrings/autorefs/pull/5)
 
 
 ## [0.1.1](https://github.com/mkdocstrings/autorefs/releases/tag/0.1.1) - 2021-02-28

@@ -11,11 +11,9 @@ defaults:
     shell: bash
 
 env:
-  LANG: "en_US.utf-8"
-  LC_ALL: "en_US.utf-8"
-  POETRY_VIRTUALENVS_IN_PROJECT: "true"
-  PYTHONIOENCODING: "UTF-8"
-  PYTHONPATH: docs
+  LANG: en_US.utf-8
+  LC_ALL: en_US.utf-8
+  PYTHONIOENCODING: UTF-8
 
 jobs:
 
@@ -27,43 +25,57 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - name: Set up PDM
+      uses: pdm-project/setup-pdm@v2.5
       with:
-        python-version: 3.8
+        python-version: "3.8"
 
-    - name: Set up the cache
-      uses: actions/cache@v1
-      with:
-        path: .venv
-        key: quality-venv-cache-2
-
-    - name: Set up the project
+    - name: Set cache variables
+      id: set_variables
       run: |
-        pip install poetry
-        poetry install -v || { rm -rf .venv; poetry install -v; }
-        poetry update
+        echo "::set-output name=PIP_CACHE::$(pip cache dir)"
+        echo "::set-output name=PDM_CACHE::$(pdm config cache_dir)"
+
+    - name: Set up cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ steps.set_variables.outputs.PIP_CACHE }}
+          ${{ steps.set_variables.outputs.PDM_CACHE }}
+        key: checks-cache
+
+    - name: Resolving dependencies
+      run: pdm lock
+
+    - name: Install dependencies
+      run: pdm install -G duty -G docs -G quality -G typing -G security
 
     - name: Check if the documentation builds correctly
-      run: poetry run duty check-docs
+      run: pdm run duty check-docs
 
     - name: Check the code quality
-      run: poetry run duty check-code-quality
+      run: pdm run duty check-quality
 
     - name: Check if the code is correctly typed
-      run: poetry run duty check-types
+      run: pdm run duty check-types
 
     - name: Check for vulnerabilities in dependencies
-      run: |
-        pip install safety
-        poetry run duty check-dependencies
+      run: pdm run duty check-dependencies
 
   tests:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        os:
+        - ubuntu-latest
+        - macos-latest
+        - windows-latest
+        python-version:
+        - "3.7"
+        - "3.8"
+        - "3.9"
+        - "3.10"
+        - "3.11-dev"
 
     runs-on: ${{ matrix.os }}
 
@@ -71,22 +83,27 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+    - name: Set up PDM
+      uses: pdm-project/setup-pdm@v2.5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Set up the cache
-      uses: actions/cache@v1
-      with:
-        path: .venv
-        key: tests-venv-cache-${{ matrix.os }}-py${{ matrix.python-version }}
-
-    - name: Set up the project
+    - name: Set cache variables
+      id: set_variables
       run: |
-        pip install poetry
-        poetry install -v || { rm -rf .venv; poetry install -v; }
-        poetry update
+        echo "::set-output name=PIP_CACHE::$(pip cache dir)"
+        echo "::set-output name=PDM_CACHE::$(pdm config cache_dir)"
+
+    - name: Set up cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ steps.set_variables.outputs.PIP_CACHE }}
+          ${{ steps.set_variables.outputs.PDM_CACHE }}
+        key: tests-cache-${{ runner.os }}-${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: pdm install -G duty -G tests
 
     - name: Run the test suite
-      run: poetry run duty test
+      run: pdm run duty test

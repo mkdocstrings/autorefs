@@ -30,7 +30,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
     # Code based on
     # https://github.com/Python-Markdown/markdown/blob/8e7528fa5c98bf4652deb13206d6e6241d61630b/markdown/inlinepatterns.py#L780
 
-    def handleMatch(self, m, data) -> Union[Element, EvalIDType]:  # noqa: N802 (parent's casing)
+    def handleMatch(self, m, data) -> Union[Element, EvalIDType]:  # type: ignore[override]  # noqa: N802,WPS111
         """Handle an element that matched.
 
         Arguments:
@@ -48,7 +48,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
         if not handled:
             return None, None, None
 
-        if re.search(r"[/ \x00-\x1f]", identifier):  # type: ignore
+        if re.search(r"[/ \x00-\x1f]", identifier):
             # Do nothing if the matched reference contains:
             # - a space, slash or control character (considered unintended);
             # - specifically \x01 is used by Python-Markdown HTML stash when there's inline formatting,
@@ -70,7 +70,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
         Returns:
             A tuple containing the identifier, its end position, and whether it matched.
         """
-        m = self.RE_LINK.match(data, pos=index)
+        m = self.RE_LINK.match(data, pos=index)  # noqa: WPS111
         if not m:
             return None, index, False
 
@@ -86,7 +86,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
         end = m.end(0)
         return identifier, end, True
 
-    def makeTag(self, identifier: str, text: str) -> Element:  # noqa: N802,W0221 (parent's casing, different params)
+    def makeTag(self, identifier: str, text: str) -> Element:  # type: ignore[override]  # noqa: N802,W0221
         """Create a tag that can be matched by `AUTO_REF_RE`.
 
         Arguments:
@@ -123,12 +123,12 @@ def relative_url(url_a: str, url_b: str) -> str:
 
     # go up as many times as remaining a parts' depth
     levels = len(parts_a) - 1
-    parts_relative = [".."] * levels + parts_b
+    parts_relative = [".."] * levels + parts_b  # noqa: WPS435
     relative = "/".join(parts_relative)
     return f"{relative}#{anchor}"
 
 
-def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable:
+def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable:  # noqa: WPS212,WPS231
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
     In our context, we match Markdown references and replace them with HTML links.
@@ -147,7 +147,7 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable:
         and returning the replacement strings.
     """
 
-    def inner(match: Match):
+    def inner(match: Match):  # noqa: WPS212,WPS430
         identifier = match["identifier"]
         title = match["title"]
         kind = match["kind"]
@@ -201,5 +201,5 @@ class AutorefsExtension(Extension):
         md.inlinePatterns.register(
             AutoRefInlineProcessor(md),
             "mkdocs-autorefs",
-            priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
+            priority=168,  # noqa: WPS432  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )

@@ -1,8 +1,10 @@
 # mkdocs-autorefs
 
 [![ci](https://github.com/mkdocstrings/autorefs/workflows/ci/badge.svg)](https://github.com/mkdocstrings/autorefs/actions?query=workflow%3Aci)
-[![pypi version](https://img.shields.io/pypi/v/mkdocs-autorefs.svg)](https://pypi.org/project/mkdocs-autorefs/)
-[![gitter](https://badges.gitter.im/join%20chat.svg)](https://gitter.im/mkdocstrings/community)
+[![documentation](https://img.shields.io/badge/docs-mkdocs%20material-blue.svg?style=flat)](https://mkdocstrings.github.io/autorefs/)
+[![pypi version](https://img.shields.io/pypi/v/autorefs.svg)](https://pypi.org/project/autorefs/)
+[![gitpod](https://img.shields.io/badge/gitpod-workspace-blue.svg?style=flat)](https://gitpod.io/#https://github.com/mkdocstrings/autorefs)
+[![gitter](https://badges.gitter.im/join%20chat.svg)](https://gitter.im/autorefs/community)
 
 Automatically link across pages in MkDocs.
 
@@ -49,10 +51,10 @@ Note that this plugin's behavior is undefined when trying to link to a heading t
 
 ## Requirements
 
-`mkdocs-autorefs` requires Python 3.6 or above.
+mkdocs-autorefs requires Python 3.7 or above.
 
 <details>
-<summary>To install Python 3.6, I recommend using <a href="https://github.com/pyenv/pyenv"><code>pyenv</code></a>.</summary>
+<summary>To install Python 3.7, I recommend using <a href="https://github.com/pyenv/pyenv"><code>pyenv</code></a>.</summary>
 
 ```bash
 # install pyenv
@@ -63,10 +65,10 @@ export PATH="${HOME}/.pyenv/bin:${PATH}"
 export PYENV_ROOT="${HOME}/.pyenv"
 eval "$(pyenv init -)"
 
-# install Python 3.6
-pyenv install 3.6.12
+# install Python 3.7
+pyenv install 3.7.12
 
 # make it available globally
-pyenv global system 3.6.12
+pyenv global system 3.7.12
 ```
 </details>
