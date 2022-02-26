@@ -14,6 +14,7 @@ import contextlib
 import functools
 import logging
 from typing import Callable, Dict, Optional, Sequence
+from urllib.parse import urlsplit
 
 from mkdocs.config import Config
 from mkdocs.plugins import BasePlugin
@@ -68,6 +69,25 @@ class AutorefsPlugin(BasePlugin):
         """
         self._abs_url_map[identifier] = url
 
+    def _get_item_url(  # noqa: WPS234
+        self,
+        identifier: str,
+        fallback: Optional[Callable[[str], Sequence[str]]] = None,
+    ) -> str:
+        try:
+            return self._url_map[identifier]
+        except KeyError:
+            if identifier in self._abs_url_map:
+                return self._abs_url_map[identifier]
+            if fallback:
+                new_identifiers = fallback(identifier)
+                for new_identifier in new_identifiers:
+                    with contextlib.suppress(KeyError):
+                        url = self._get_item_url(new_identifier)
+                        self._url_map[identifier] = url
+                        return url
+            raise
+
     def get_item_url(  # noqa: WPS234
         self,
         identifier: str,
@@ -83,27 +103,12 @@ class AutorefsPlugin(BasePlugin):
 
         Returns:
             A site-relative URL.
-
-        Raises:
-            KeyError: If there isn't an item by this identifier anywhere on the site.
         """
-        try:
-            url = self._url_map[identifier]
-        except KeyError:
-            if identifier in self._abs_url_map:
-                return self._abs_url_map[identifier]
-
-            if fallback:
-                new_identifiers = fallback(identifier)
-                for new_identifier in new_identifiers:
-                    with contextlib.suppress(KeyError):
-                        url = self.get_item_url(new_identifier, from_url)
-                        self._url_map[identifier] = url  # update the map to avoid doing all this again
-                        return url
-            raise
-
+        url = self._get_item_url(identifier, fallback)
         if from_url is not None:
-            return relative_url(from_url, url)
+            parsed = urlsplit(url)
+            if not parsed.scheme and not parsed.netloc:
+                return relative_url(from_url, url)
         return url
 
     def on_config(self, config: Config, **kwargs) -> Config:  # noqa: W0613,R0201 (unused arguments, cannot be static)

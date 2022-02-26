@@ -45,3 +45,15 @@ def test_url_registration_with_fallback():
         plugin.get_item_url("foobar", fallback=lambda _: ("baaaa",))
     with pytest.raises(KeyError):
         plugin.get_item_url("foobar", fallback=lambda _: ())
+
+
+def test_dont_make_relative_urls_relative_again():
+    """Check that URLs are not made relative more than once."""
+    plugin = AutorefsPlugin()
+    plugin.register_anchor(identifier="foo.bar.baz", page="foo/bar/baz.html")
+
+    for _ in range(2):
+        assert (
+            plugin.get_item_url("hello", from_url="baz/bar/foo.html", fallback=lambda _: ("foo.bar.baz",))
+            == "../../foo/bar/baz.html#foo.bar.baz"
+        )
