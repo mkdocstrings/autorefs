@@ -3,6 +3,7 @@
 import re
 from html import escape, unescape
 from typing import Any, Callable, List, Match, Tuple, Union
+from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
 from markdown import Markdown
@@ -164,9 +165,13 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable: 
                 return f"[{identifier}][]"
             return f"[{title}][{identifier}]"
 
+        parsed = urlsplit(url)
+        external = parsed.scheme or parsed.netloc
+        classes = ["autorefs", "autorefs-external" if external else "autorefs-internal"]
+        class_attr = " ".join(classes)
         if kind == "autorefs-optional-hover":
-            return f'<a title="{identifier}" href="{escape(url)}">{title}</a>'
-        return f'<a href="{escape(url)}">{title}</a>'
+            return f'<a class="{class_attr}" title="{identifier}" href="{escape(url)}">{title}</a>'
+        return f'<a class="{class_attr}" href="{escape(url)}">{title}</a>'
 
     return inner
 

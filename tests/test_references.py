@@ -61,7 +61,7 @@ def test_reference_implicit():
     run_references_test(
         url_map={"Foo": "foo.html#Foo"},
         source="This [Foo][].",
-        output='<p>This <a href="foo.html#Foo">Foo</a>.</p>',
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#Foo">Foo</a>.</p>',
     )
 
 
@@ -70,7 +70,7 @@ def test_reference_explicit_with_markdown_text():
     run_references_test(
         url_map={"Foo": "foo.html#Foo"},
         source="This [**Foo**][Foo].",
-        output='<p>This <a href="foo.html#Foo"><strong>Foo</strong></a>.</p>',
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#Foo"><strong>Foo</strong></a>.</p>',
     )
 
 
@@ -79,7 +79,7 @@ def test_reference_implicit_with_code():
     run_references_test(
         url_map={"Foo": "foo.html#Foo"},
         source="This [`Foo`][].",
-        output='<p>This <a href="foo.html#Foo"><code>Foo</code></a>.</p>',
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#Foo"><code>Foo</code></a>.</p>',
     )
 
 
@@ -88,7 +88,7 @@ def test_reference_with_punctuation():
     run_references_test(
         url_map={'Foo&"bar': 'foo.html#Foo&"bar'},
         source='This [Foo&"bar][].',
-        output='<p>This <a href="foo.html#Foo&amp;&quot;bar">Foo&amp;"bar</a>.</p>',
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#Foo&amp;&quot;bar">Foo&amp;"bar</a>.</p>',
     )
 
 
@@ -98,7 +98,7 @@ def test_reference_to_relative_path():
         from_url="sub/sub/page.html",
         url_map={"zz": "foo.html#zz"},
         source="This [zz][].",
-        output='<p>This <a href="../../foo.html#zz">zz</a>.</p>',
+        output='<p>This <a class="autorefs autorefs-internal" href="../../foo.html#zz">zz</a>.</p>',
     )
 
 
@@ -174,7 +174,7 @@ def test_custom_required_reference():
     url_map = {"ok": "ok.html#ok"}
     source = "<span data-autorefs-identifier=bar>foo</span> <span data-autorefs-identifier=ok>ok</span>"
     output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
-    assert output == '[foo][bar] <a href="ok.html#ok">ok</a>'
+    assert output == '[foo][bar] <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
     assert unmapped == ["bar"]
 
 
@@ -183,7 +183,7 @@ def test_custom_optional_reference():
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional="bar">foo</span> <span data-autorefs-optional=ok>ok</span>'
     output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
-    assert output == 'foo <a href="ok.html#ok">ok</a>'
+    assert output == 'foo <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
     assert unmapped == []  # noqa: WPS520
 
 
@@ -192,5 +192,17 @@ def test_custom_optional_hover_reference():
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional-hover="bar">foo</span> <span data-autorefs-optional-hover=ok>ok</span>'
     output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
-    assert output == '<span title="bar">foo</span> <a title="ok" href="ok.html#ok">ok</a>'
+    assert (
+        output
+        == '<span title="bar">foo</span> <a class="autorefs autorefs-internal" title="ok" href="ok.html#ok">ok</a>'
+    )
+    assert unmapped == []  # noqa: WPS520
+
+
+def test_external_references():
+    """Check that external references are marked as such."""
+    url_map = {"example": "https://example.com"}
+    source = '<span data-autorefs-optional="example">example</span>'
+    output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
+    assert output == '<a class="autorefs autorefs-external" href="https://example.com">example</a>'
     assert unmapped == []  # noqa: WPS520
