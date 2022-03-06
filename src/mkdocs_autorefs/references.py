@@ -165,11 +165,11 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable: 
                 return f"[{identifier}][]"
             return f"[{title}][{identifier}]"
 
-        classes = "autorefs"
-        classes += " external" if urlparse(url).scheme else " internal"
+        classes = ["autorefs", "autorefs-external" if urlparse(url).scheme else "autorefs-internal"]
+        class_attr = " ".join(classes)
         if kind == "autorefs-optional-hover":
-            return f'<a class="{classes}" title="{identifier}" href="{escape(url)}">{title}</a>'
-        return f'<a class="{classes}" href="{escape(url)}">{title}</a>'
+            return f'<a class="{class_attr}" title="{identifier}" href="{escape(url)}">{title}</a>'
+        return f'<a class="{class_attr}" href="{escape(url)}">{title}</a>'
 
     return inner
 
