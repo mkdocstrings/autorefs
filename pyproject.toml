@@ -52,6 +52,7 @@ autorefs = "mkdocs_autorefs.plugin:AutorefsPlugin"
 [tool.pdm]
 version = {use_scm = true}
 package-dir = "src"
+editable-backend = "editables"
 
 [tool.pdm.dev-dependencies]
 duty = ["duty>=0.7"]
