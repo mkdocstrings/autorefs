@@ -36,6 +36,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://mkdocstrings.github.io/autorefs/reference/mkdocs_autorefs/</loc>
+         <lastmod>2022-03-07</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://mkdocstrings.github.io/autorefs/reference/mkdocs_autorefs/plugin/</loc>
          <lastmod>2022-03-07</lastmod>
          <changefreq>daily</changefreq>
