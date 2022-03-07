@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [0.4.1](https://github.com/mkdocstrings/autorefs/releases/tag/0.4.1) - 2022-03-07
+
+<small>[Compare with 0.4.0](https://github.com/mkdocstrings/autorefs/compare/0.4.0...0.4.1)</small>
+
+### Bug Fixes
+- Fix packaging (missing `__init__` module) ([de0670b](https://github.com/mkdocstrings/autorefs/commit/de0670b77be84529c9c1ef37cad2a85ef8ec3cab) by Timothée Mazzucotelli). [Issue #17](https://github.com/mkdocstrings/autorefs/issues/17), [issue mkdocstrings/mkdocstrings#398](https://github.com/mkdocstrings/mkdocstrings/issues/398), [PR #18](https://github.com/mkdocstrings/autorefs/pull/18)
+
+
 ## [0.4.0](https://github.com/mkdocstrings/autorefs/releases/tag/0.4.0) - 2022-03-07
 
 <small>[Compare with 0.3.1](https://github.com/mkdocstrings/autorefs/compare/0.3.1...0.4.0)</small>
