@@ -2,7 +2,8 @@
 
 [![ci](https://github.com/mkdocstrings/autorefs/workflows/ci/badge.svg)](https://github.com/mkdocstrings/autorefs/actions?query=workflow%3Aci)
 [![documentation](https://img.shields.io/badge/docs-mkdocs%20material-blue.svg?style=flat)](https://mkdocstrings.github.io/autorefs/)
-[![pypi version](https://img.shields.io/pypi/v/autorefs.svg)](https://pypi.org/project/autorefs/)
+[![pypi version](https://img.shields.io/pypi/v/mkdocs-autorefs.svg)](https://pypi.org/project/mkdocs-autorefs/)
+[![Anaconda-Server Badge](https://img.shields.io/conda/vn/conda-forge/mkdocs-autorefs.svg)](https://anaconda.org/conda-forge/mkdocs-autorefs)
 [![gitpod](https://img.shields.io/badge/gitpod-workspace-blue.svg?style=flat)](https://gitpod.io/#https://github.com/mkdocstrings/autorefs)
 [![gitter](https://badges.gitter.im/join%20chat.svg)](https://gitter.im/autorefs/community)
 
