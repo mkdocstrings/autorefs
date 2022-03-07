@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [0.4.0](https://github.com/mkdocstrings/autorefs/releases/tag/0.4.0) - 2022-03-07
+
+<small>[Compare with 0.3.1](https://github.com/mkdocstrings/autorefs/compare/0.3.1...0.4.0)</small>
+
+### Features
+- Add HTML classes to references: `autorefs` always, and `autorefs-internal` or `autorefs-external` depending on the link ([39db59d](https://github.com/mkdocstrings/autorefs/commit/39db59d802a59d1af93d24520b1e219eeec780e4) by Timothée Mazzucotelli). [PR #16](https://github.com/mkdocstrings/autorefs/pull/16)
+
+### Bug Fixes
+- Don't compute relative URLs of already relative ones ([f6b861c](https://github.com/mkdocstrings/autorefs/commit/f6b861c0e4a95c406ea3552fc93f889c3006e1a9) by Timothée Mazzucotelli). [PR #15](https://github.com/mkdocstrings/autorefs/pull/15)
+
+
 ## [0.3.1](https://github.com/mkdocstrings/autorefs/releases/tag/0.3.1) - 2021-12-27
 
 <small>[Compare with 0.3.0](https://github.com/mkdocstrings/autorefs/compare/0.3.0...0.3.1)</small>
