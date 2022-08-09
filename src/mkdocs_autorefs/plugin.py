@@ -15,12 +15,18 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
+import re
+from functools import partial
 from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
 
+from mkdocs.config.base import Config
+from mkdocs.config.config_options import Type
+from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.plugins import BasePlugin
+from mkdocs.structure.pages import Page
 
-from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
+from mkdocs_autorefs.references import AnchorScannerTreeProcessor, AutorefsExtension, fix_refs, relative_url
 
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
@@ -36,7 +42,14 @@ except ImportError:
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 
-class AutorefsPlugin(BasePlugin):
+class AutorefsConfig(Config):
+    """Configuration options for the Autorefs plugin."""
+
+    scan_anchors = Type(bool, default=False)
+    """Whether to scan HTML pages for anchors defining references."""
+
+
+class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     """An `mkdocs` plugin.
 
     This plugin defines the following event hooks:
@@ -50,23 +63,28 @@ class AutorefsPlugin(BasePlugin):
     """
 
     scan_toc: bool = True
+    scan_anchors: bool = False
     current_page: str | None = None
+
+    _re_anchors = re.compile(r'<a(?:\s+href="([^"]*)")?\s+id="([^"]+)"\s*>')
 
     def __init__(self) -> None:
         """Initialize the object."""
         super().__init__()
         self._url_map: dict[str, str] = {}
         self._abs_url_map: dict[str, str] = {}
+        self._extension: AutorefsExtension | None = None
         self.get_fallback_anchor: Callable[[str], str | None] | None = None
+        self.current_page: str | None = None
 
-    def register_anchor(self, page: str, identifier: str) -> None:
+    def register_anchor(self, page: str, identifier: str, anchor: str | None = None) -> None:
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
 
         Arguments:
             page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
             identifier: The HTML anchor (without '#') as a string.
         """
-        self._url_map[identifier] = f"{page}#{identifier}"
+        self._url_map[identifier] = f"{page}#{anchor or identifier}"
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
@@ -133,20 +151,15 @@ class AutorefsPlugin(BasePlugin):
             The modified config.
         """
         log.debug("Adding AutorefsExtension to the list")
-        config["markdown_extensions"].append(AutorefsExtension())
+        anchor_scanner_factory = (
+            partial(AnchorScannerTreeProcessor, self) if self.scan_anchors or self.config.scan_anchors else None
+        )
+        # anchor_scanner_factory = None
+        self._extension = AutorefsExtension(anchor_scanner_factory=anchor_scanner_factory)
+        config["markdown_extensions"].append(self._extension)
         return config
 
-    def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
-        """Remember which page is the current one.
-
-        Arguments:
-            markdown: Input Markdown.
-            page: The related MkDocs page instance.
-            kwargs: Additional arguments passed by MkDocs.
-
-        Returns:
-            The same Markdown. We only use this hook to map anchors to URLs.
-        """
+    def on_page_markdown(self, markdown: str, *, page: Page, **kwargs: Any) -> str | None:  # noqa: ARG002, D102
         self.current_page = page.url
         return markdown
 
@@ -170,6 +183,11 @@ class AutorefsPlugin(BasePlugin):
             log.debug(f"Mapping identifiers to URLs for page {page.file.src_path}")
             for item in page.toc.items:
                 self.map_urls(page.url, item)
+
+        # if self.scan_anchors or self.config.scan_anchors:
+        #     for href, hid in re.findall(self._re_anchors, html):
+        #         self.register_anchor(page.url, identifier=hid, anchor=href.lstrip("#"))
+
         return html
 
     def map_urls(self, base_url: str, anchor: AnchorLink) -> None:

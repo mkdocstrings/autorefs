@@ -8,12 +8,16 @@ from typing import TYPE_CHECKING, Any, Callable, Match, Tuple
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
+from markdown.core import Markdown
 from markdown.extensions import Extension
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
+from markdown.treeprocessors import Treeprocessor
 from markdown.util import INLINE_PLACEHOLDER_RE
 
 if TYPE_CHECKING:
     from markdown import Markdown
+
+    from mkdocs_autorefs.plugin import AutorefsPlugin
 
 AUTO_REF_RE = re.compile(
     r"<span data-(?P<kind>autorefs-identifier|autorefs-optional|autorefs-optional-hover)="
@@ -197,8 +201,47 @@ def fix_refs(html: str, url_mapper: Callable[[str], str]) -> tuple[str, list[str
     return html, unmapped
 
 
+class AnchorScannerTreeProcessor(Treeprocessor):
+    """Tree processor to scan and register HTML anchors."""
+
+    def __init__(self, plugin: AutorefsPlugin, md: Markdown | None = None) -> None:
+        """Initialize the tree processor.
+
+        Parameters:
+            plugin: A reference to the autorefs plugin, to use its `register_anchor` method.
+        """
+        super().__init__(md)
+        self.plugin = plugin
+
+    def run(self, root: Element) -> None:  # noqa: D102
+        if self.plugin.current_page is not None:
+            self._scan_anchors(root)
+
+    def _scan_anchors(self, parent: Element) -> None:
+        for el in parent:
+            if el.tag == "a" and (hid := el.get("id")):
+                self.plugin.register_anchor(self.plugin.current_page, hid, el.get("href", "").lstrip("#"))  # type: ignore[arg-type]
+            else:
+                self._scan_anchors(el)
+
+
 class AutorefsExtension(Extension):
     """Extension that inserts auto-references in Markdown."""
+
+    def __init__(
+        self,
+        anchor_scanner_factory: Callable[[Markdown], AnchorScannerTreeProcessor] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize the Markdown extension.
+
+        Parameters:
+            anchor_scanner_factory: A callable that returns an instance of the anchor scanner tree processor.
+            **kwargs: Keyword arguments passed to the [base constructor][markdown.extensions.Extension].
+        """
+        super().__init__(**kwargs)
+        self.anchor_scanner_factory = anchor_scanner_factory
+        self.anchor_scanner: AnchorScannerTreeProcessor | None = None
 
     def extendMarkdown(self, md: Markdown) -> None:  # noqa: N802 (casing: parent method's name)
         """Register the extension.
@@ -213,3 +256,10 @@ class AutorefsExtension(Extension):
             "mkdocs-autorefs",
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
+        if self.anchor_scanner_factory:
+            self.anchor_scanner = self.anchor_scanner_factory(md)
+            md.treeprocessors.register(
+                self.anchor_scanner,
+                "mkdocs-autorefs-anchors-scanner",
+                priority=0,
+            )
