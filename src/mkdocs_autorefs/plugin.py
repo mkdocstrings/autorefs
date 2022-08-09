@@ -15,7 +15,8 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Sequence
+import re
+from typing import Callable, Dict, Optional, Sequence
 from urllib.parse import urlsplit
 
 from mkdocs.plugins import BasePlugin
@@ -50,7 +51,8 @@ class AutorefsPlugin(BasePlugin):
     """
 
     scan_toc: bool = True
-    current_page: str | None = None
+    scan_html_tags: bool = True
+    current_page: Optional[str] = None
 
     def __init__(self) -> None:
         """Initialize the object."""
@@ -170,6 +172,12 @@ class AutorefsPlugin(BasePlugin):
             log.debug(f"Mapping identifiers to URLs for page {page.file.src_path}")
             for item in page.toc.items:
                 self.map_urls(page.url, item)
+
+        if self.scan_html_tags:
+            # Matches any html tag with the name property
+            for match in re.findall(r"""<(\w+?) .*?name=["']([\w-]*)["'].*?>.*?</\1>""", html):
+                self.register_anchor(page.url, match[1])
+
         return html
 
     def map_urls(self, base_url: str, anchor: AnchorLink) -> None:
