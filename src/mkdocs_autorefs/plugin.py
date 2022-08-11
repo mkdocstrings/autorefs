@@ -175,7 +175,7 @@ class AutorefsPlugin(BasePlugin):
 
         if self.scan_html_tags:
             # Matches any html tag with the name property
-            for match in re.findall(r"""<(\w+?) .*?name=["']([\w-]*)["'].*?>.*?</\1>""", html):
+            for match in re.findall(r"""<(\w+?) .*?id=["']([\w-]*)["'].*?>.*?</\1>""", html):
                 self.register_anchor(page.url, match[1])
 
         return html
