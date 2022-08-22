@@ -50,8 +50,11 @@ class AutorefsPlugin(BasePlugin):
     for more information about its plugin system.
     """
 
+    config = (
+        ("scan_html_tags", mkdocs.config.config_options.Type(bool, default=False))
+    )
+
     scan_toc: bool = True
-    scan_html_tags: bool = True
     current_page: Optional[str] = None
 
     def __init__(self) -> None:
@@ -173,7 +176,7 @@ class AutorefsPlugin(BasePlugin):
             for item in page.toc.items:
                 self.map_urls(page.url, item)
 
-        if self.scan_html_tags:
+        if self.config["scan_html_tags"]:
             # Matches any html tag with the id property
             for match in re.findall(r"""<\w+? .*?id=["']([_\w-]*)["'].*?>""", html):
                 self.register_anchor(page.url, match)
