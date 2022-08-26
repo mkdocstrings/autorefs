@@ -19,6 +19,8 @@ import re
 from typing import Callable, Dict, Optional, Sequence
 from urllib.parse import urlsplit
 
+from mkdocs.config import Config
+from mkdocs.config.config_options import Type
 from mkdocs.plugins import BasePlugin
 
 from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
@@ -51,7 +53,7 @@ class AutorefsPlugin(BasePlugin):
     """
 
     config = (
-        ("scan_html_tags", mkdocs.config.config_options.Type(bool, default=False))
+        ("scan_html_tags", Type(bool, default=False))
     )
 
     scan_toc: bool = True
