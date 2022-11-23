@@ -179,8 +179,8 @@ class AutorefsPlugin(BasePlugin):
                 self.map_urls(page.url, item)
 
         if self.config["scan_html_tags"]:
-            # Matches any html tag with the id property
-            for match in re.findall(r"""<\w+? .*?id=["']([_\w-]*)["'].*?>""", html):
+            # Matches any html anchor with the id property (<a id="xx">)
+            for match in re.findall(r"""<a .*?id=["']([_\w-]*)["'].*?>""", html):
                 self.register_anchor(page.url, match)
 
         return html
