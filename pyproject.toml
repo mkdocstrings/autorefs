@@ -35,6 +35,7 @@ classifiers = [
 dependencies = [
     "Markdown>=3.3",
     "mkdocs>=1.1",
+    "pathspec>=0.11.1"
 ]
 
 [project.urls]

@@ -1,6 +1,5 @@
 """Tests for the plugin module."""
 import pytest
-
 from mkdocs_autorefs.plugin import AutorefsPlugin
 
 
@@ -57,3 +56,14 @@ def test_dont_make_relative_urls_relative_again():
             plugin.get_item_url("hello", from_url="baz/bar/foo.html", fallback=lambda _: ("foo.bar.baz",))
             == "../../foo/bar/baz.html#foo.bar.baz"
         )
+
+
+def test_priority_config():
+    """Check that URLs are not made relative more than once."""
+    plugin = AutorefsPlugin()
+    plugin.config = {"priority": ["*", "reference", "foo"]}
+    plugin.register_anchor(identifier="bar.baz", page="reference/baz.html")
+    plugin.register_anchor(identifier="bar.baz", page="baz.html")
+    plugin.register_anchor(identifier="bar.baz", page="foo/bar/baz.html")
+
+    assert plugin.get_item_url("bar.baz") == "baz.html#bar.baz"

@@ -25,6 +25,18 @@ plugins:
   - autorefs
 ```
 
+If a heading title that appears several times throughout the site, set the priority parameter to decide which page will be linked. The priority list follows the gitignore syntax and is tested in reverse: each anchor will be assigned the lowest priority amongst all of its matches.
+
+```yaml
+# mkdocs.yml
+plugins:
+  - search
+  - autorefs:
+    priority:
+      - '*' # priority to all files
+      - reference # except reference/... files 
+```
+
 In one of your Markdown files (e.g. `doc1.md`) create some headings:
 
 ```markdown
@@ -47,8 +59,6 @@ This works the same as [a normal link to that heading](../doc1.md#hello-world).
 ```
 
 Linking to a heading without needing to know the destination page can be useful if specifying that path is cumbersome, e.g. when the pages have deeply nested paths, are far apart, or are moved around frequently. And the issue is somewhat exacerbated by the fact that [MkDocs supports only *relative* links between pages](https://github.com/mkdocs/mkdocs/issues/1592).
-
-Note that this plugin's behavior is undefined when trying to link to a heading title that appears several times throughout the site. Currently it arbitrarily chooses one of the pages.
 
 ## Requirements
 

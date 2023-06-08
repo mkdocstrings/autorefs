@@ -13,16 +13,21 @@ and fixes them using the previously stored identifier-URL mapping.
 import contextlib
 import functools
 import logging
-from typing import Callable, Dict, Optional, Sequence
+from typing import Callable, Dict, List, Optional, Sequence
 from urllib.parse import urlsplit
+from pathlib import Path
+import pathspec
 
+import mkdocs
 from mkdocs.config import Config
+from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.plugins import BasePlugin
 from mkdocs.structure.pages import Page
 from mkdocs.structure.toc import AnchorLink
 from mkdocs.utils import warning_filter
 
 from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
+from mkdocs.config import config_options as c
 
 log = logging.getLogger(f"mkdocs.plugins.{__name__}")
 log.addFilter(warning_filter)
@@ -43,6 +48,9 @@ class AutorefsPlugin(BasePlugin):
 
     scan_toc: bool = True
     current_page: Optional[str] = None
+    config_scheme = (
+        ('priority', c.ListOfItems(c.Type(str), default=[])),
+    )
 
     def __init__(self) -> None:
         """Initialize the object."""
@@ -50,6 +58,16 @@ class AutorefsPlugin(BasePlugin):
         self._url_map: Dict[str, str] = {}
         self._abs_url_map: Dict[str, str] = {}
         self.get_fallback_anchor: Optional[Callable[[str], Optional[str]]] = None  # noqa: WPS234
+        self._priority_patterns = None
+
+    @property
+    def priority_patterns(self):
+        if self._priority_patterns is None:
+            self._priority_patterns = [
+                pathspec.patterns.GitWildMatchPattern(pat)
+                for pat in self.config.get('priority')
+            ]
+        return self._priority_patterns
 
     def register_anchor(self, page: str, identifier: str):
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
@@ -58,6 +76,20 @@ class AutorefsPlugin(BasePlugin):
             page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
             identifier: The HTML anchor (without '#') as a string.
         """
+        if identifier in self._url_map:
+            rev_patterns = list(enumerate(self.priority_patterns))[::-1]
+            old_priority_idx = next(
+                (i for i, pat in rev_patterns
+                 if pat.match_file(self._url_map[identifier])),
+                len(rev_patterns),
+            )
+            new_priority_idx = next(
+                (i for i, pat in rev_patterns
+                 if pat.match_file(page)),
+                len(rev_patterns),
+            )
+            if new_priority_idx >= old_priority_idx:
+                return
         self._url_map[identifier] = f"{page}#{identifier}"
 
     def register_url(self, identifier: str, url: str):
