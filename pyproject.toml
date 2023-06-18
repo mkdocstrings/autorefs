@@ -1,6 +1,6 @@
 [build-system]
-requires = ["pdm-pep517"]
-build-backend = "pdm.pep517.api"
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
 [project]
 name = "mkdocs-autorefs"
@@ -49,10 +49,12 @@ Gitter = "https://gitter.im/mkdocstrings/community"
 [project.entry-points."mkdocs.plugins"]
 autorefs = "mkdocs_autorefs.plugin:AutorefsPlugin"
 
-[tool.pdm]
-version = {use_scm = true}
+[tool.pdm.build]
 package-dir = "src"
 editable-backend = "editables"
+
+[tool.pdm.version]
+source = "scm"
 
 [tool.pdm.dev-dependencies]
 duty = ["duty>=0.7"]
