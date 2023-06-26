@@ -9,9 +9,9 @@ authors = [
     {name = "Oleh Prypin", email = "oleh@pryp.in"},
     {name = "Timothée Mazzucotelli", email = "pawamoy@pm.me"},
 ]
-license = {file = "LICENSE"}
+license = {text = "ISC"}
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 keywords = ["mkdocs", "mkdocs-plugin", "docstrings", "autodoc"]
 dynamic = ["version"]
 classifiers = [
@@ -21,7 +21,6 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -44,78 +43,59 @@ Changelog = "https://mkdocstrings.github.io/autorefs/changelog"
 Repository = "https://github.com/mkdocstrings/autorefs"
 Issues = "https://github.com/mkdocstrings/autorefs/issues"
 Discussions = "https://github.com/mkdocstrings/autorefs/discussions"
-Gitter = "https://gitter.im/mkdocstrings/community"
+Gitter = "https://gitter.im/mkdocstrings/autorefs"
 
 [project.entry-points."mkdocs.plugins"]
 autorefs = "mkdocs_autorefs.plugin:AutorefsPlugin"
+
+[tool.pdm]
+version = {source = "scm"}
+plugins = [
+    "pdm-multirun",
+]
 
 [tool.pdm.build]
 package-dir = "src"
 editable-backend = "editables"
 
-[tool.pdm.version]
-source = "scm"
-
 [tool.pdm.dev-dependencies]
-duty = ["duty>=0.7"]
+duty = ["duty>=0.10"]
+ci-quality = ["mkdocs-autorefs[duty,docs,quality,typing,security]"]
+ci-tests = ["mkdocs-autorefs[duty,tests]"]
 docs = [
-    "mkdocs>=1.2",
+    "black>=23.1",
+    "markdown-callouts>=0.2",
+    "markdown-exec>=0.5",
+    "mkdocs>=1.3",
     "mkdocs-coverage>=0.2",
     "mkdocs-gen-files>=0.3",
+    "mkdocs-git-committers-plugin-2>=1.1",
     "mkdocs-literate-nav>=0.4",
     "mkdocs-material>=7.3",
-    "mkdocs-section-index>=0.3",
-    "mkdocstrings>=0.16",
+    "mkdocs-minify-plugin>=0.6.4",
+    "mkdocstrings[python]>=0.18",
     "toml>=0.10",
 ]
-format = [
-    "autoflake>=1.4",
-    "black>=21.10b0",
-    "isort>=5.10",
-]
 maintain = [
-    # TODO: remove this section when git-changelog is more powerful
-    "git-changelog>=0.4",
+    "black>=23.1",
+    "blacken-docs>=1.13",
+    "git-changelog>=1.0",
 ]
 quality = [
-    "darglint>=1.8",
-    "flake8-bandit>=2.1",
-    "bandit<1.7.3",
-    "flake8-black>=0.2",
-    "flake8-bugbear>=21.9",
-    "flake8-builtins>=1.5",
-    "flake8-comprehensions>=3.7",
-    "flake8-docstrings>=1.6",
-    "flake8-pytest-style>=1.5",
-    "flake8-string-format>=0.3",
-    "flake8-tidy-imports>=4.5",
-    "flake8-variables-names>=0.0",
-    "pep8-naming>=0.12",
-    "wps-light>=0.15",
+    "ruff>=0.0.246",
 ]
 tests = [
     "pytest>=6.2",
     "pytest-cov>=3.0",
     "pytest-randomly>=3.10",
-    "pytest-sugar>=0.9",
     "pytest-xdist>=2.4",
 ]
 typing = [
     "mypy>=0.910",
     "types-markdown>=3.3",
+    "types-pyyaml>=6.0",
     "types-toml>=0.10",
 ]
-security = ["safety>=1.10"]
-
-[tool.black]
-line-length = 120
-
-[tool.isort]
-line_length = 120
-not_skip = "__init__.py"
-multi_line_output = 3
-force_single_line = false
-balanced_wrapping = true
-default_section = "THIRDPARTY"
-known_first_party = "mkdocs_autorefs"
-include_trailing_comma = true
+security = [
+    "safety>=2",
+]

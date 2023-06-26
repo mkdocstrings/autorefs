@@ -5,7 +5,7 @@
 [![pypi version](https://img.shields.io/pypi/v/mkdocs-autorefs.svg)](https://pypi.org/project/mkdocs-autorefs/)
 [![conda version](https://img.shields.io/conda/vn/conda-forge/mkdocs-autorefs.svg)](https://anaconda.org/conda-forge/mkdocs-autorefs)
 [![gitpod](https://img.shields.io/badge/gitpod-workspace-blue.svg?style=flat)](https://gitpod.io/#https://github.com/mkdocstrings/autorefs)
-[![gitter](https://badges.gitter.im/join%20chat.svg)](https://gitter.im/autorefs/community)
+[![gitter](https://badges.gitter.im/join%20chat.svg)](https://gitter.im/mkdocstrings/autorefs)
 
 Automatically link across pages in MkDocs.
 
