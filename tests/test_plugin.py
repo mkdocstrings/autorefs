@@ -1,10 +1,13 @@
 """Tests for the plugin module."""
+
+from __future__ import annotations
+
 import pytest
 
 from mkdocs_autorefs.plugin import AutorefsPlugin
 
 
-def test_url_registration():
+def test_url_registration() -> None:
     """Check that URLs can be registered, then obtained."""
     plugin = AutorefsPlugin()
     plugin.register_anchor(identifier="foo", page="foo1.html")
@@ -16,7 +19,7 @@ def test_url_registration():
         plugin.get_item_url("baz")
 
 
-def test_url_registration_with_from_url():
+def test_url_registration_with_from_url() -> None:
     """Check that URLs can be registered, then obtained, relative to a page."""
     plugin = AutorefsPlugin()
     plugin.register_anchor(identifier="foo", page="foo1.html")
@@ -28,7 +31,7 @@ def test_url_registration_with_from_url():
         plugin.get_item_url("baz", from_url="a/b.html")
 
 
-def test_url_registration_with_fallback():
+def test_url_registration_with_fallback() -> None:
     """Check that URLs can be registered, then obtained through a fallback."""
     plugin = AutorefsPlugin()
     plugin.register_anchor(identifier="foo", page="foo1.html")
@@ -47,7 +50,7 @@ def test_url_registration_with_fallback():
         plugin.get_item_url("foobar", fallback=lambda _: ())
 
 
-def test_dont_make_relative_urls_relative_again():
+def test_dont_make_relative_urls_relative_again() -> None:
     """Check that URLs are not made relative more than once."""
     plugin = AutorefsPlugin()
     plugin.register_anchor(identifier="foo.bar.baz", page="foo/bar/baz.html")
