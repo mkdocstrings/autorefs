@@ -1,4 +1,7 @@
 """Tests for the references module."""
+
+from __future__ import annotations
+
 import markdown
 import pytest
 
@@ -30,12 +33,18 @@ from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
         ("", "a/b.html#x", "a/b.html#x"),
     ],
 )
-def test_relative_url(current_url, to_url, href_url):
+def test_relative_url(current_url: str, to_url: str, href_url: str) -> None:
     """Compute relative URLs correctly."""
     assert relative_url(current_url, to_url) == href_url
 
 
-def run_references_test(url_map, source, output, unmapped=None, from_url="page.html"):
+def run_references_test(
+    url_map: dict[str, str],
+    source: str,
+    output: str,
+    unmapped: list[str] | None = None,
+    from_url: str = "page.html",
+) -> None:
     """Help running tests about references.
 
     Arguments:
@@ -48,7 +57,7 @@ def run_references_test(url_map, source, output, unmapped=None, from_url="page.h
     md = markdown.Markdown(extensions=[AutorefsExtension()])
     content = md.convert(source)
 
-    def url_mapper(identifier):  # noqa: WPS430
+    def url_mapper(identifier: str) -> str:
         return relative_url(from_url, url_map[identifier])
 
     actual_output, actual_unmapped = fix_refs(content, url_mapper)
@@ -56,7 +65,7 @@ def run_references_test(url_map, source, output, unmapped=None, from_url="page.h
     assert actual_unmapped == (unmapped or [])
 
 
-def test_reference_implicit():
+def test_reference_implicit() -> None:
     """Check implicit references (identifier only)."""
     run_references_test(
         url_map={"Foo": "foo.html#Foo"},
@@ -65,7 +74,7 @@ def test_reference_implicit():
     )
 
 
-def test_reference_explicit_with_markdown_text():
+def test_reference_explicit_with_markdown_text() -> None:
     """Check explicit references with Markdown formatting."""
     run_references_test(
         url_map={"Foo": "foo.html#Foo"},
@@ -74,7 +83,7 @@ def test_reference_explicit_with_markdown_text():
     )
 
 
-def test_reference_implicit_with_code():
+def test_reference_implicit_with_code() -> None:
     """Check implicit references (identifier only, wrapped in backticks)."""
     run_references_test(
         url_map={"Foo": "foo.html#Foo"},
@@ -83,7 +92,7 @@ def test_reference_implicit_with_code():
     )
 
 
-def test_reference_with_punctuation():
+def test_reference_with_punctuation() -> None:
     """Check references with punctuation."""
     run_references_test(
         url_map={'Foo&"bar': 'foo.html#Foo&"bar'},
@@ -92,7 +101,7 @@ def test_reference_with_punctuation():
     )
 
 
-def test_reference_to_relative_path():
+def test_reference_to_relative_path() -> None:
     """Check references from a page at a nested path."""
     run_references_test(
         from_url="sub/sub/page.html",
@@ -102,7 +111,7 @@ def test_reference_to_relative_path():
     )
 
 
-def test_no_reference_with_space():
+def test_no_reference_with_space() -> None:
     """Check that references with spaces are not fixed."""
     run_references_test(
         url_map={"Foo bar": "foo.html#Foo bar"},
@@ -111,7 +120,7 @@ def test_no_reference_with_space():
     )
 
 
-def test_no_reference_inside_markdown():
+def test_no_reference_inside_markdown() -> None:
     """Check that references inside code are not fixed."""
     run_references_test(
         url_map={"Foo": "foo.html#Foo"},
@@ -120,7 +129,7 @@ def test_no_reference_inside_markdown():
     )
 
 
-def test_missing_reference():
+def test_missing_reference() -> None:
     """Check that implicit references are correctly seen as unmapped."""
     run_references_test(
         url_map={"NotFoo": "foo.html#NotFoo"},
@@ -130,7 +139,7 @@ def test_missing_reference():
     )
 
 
-def test_missing_reference_with_markdown_text():
+def test_missing_reference_with_markdown_text() -> None:
     """Check unmapped explicit references."""
     run_references_test(
         url_map={"NotFoo": "foo.html#NotFoo"},
@@ -140,7 +149,7 @@ def test_missing_reference_with_markdown_text():
     )
 
 
-def test_missing_reference_with_markdown_id():
+def test_missing_reference_with_markdown_id() -> None:
     """Check unmapped explicit references with Markdown in the identifier."""
     run_references_test(
         url_map={"Foo": "foo.html#Foo", "NotFoo": "foo.html#NotFoo"},
@@ -150,7 +159,7 @@ def test_missing_reference_with_markdown_id():
     )
 
 
-def test_missing_reference_with_markdown_implicit():
+def test_missing_reference_with_markdown_implicit() -> None:
     """Check that implicit references are not fixed when the identifier is not the exact one."""
     run_references_test(
         url_map={"Foo-bar": "foo.html#Foo-bar"},
@@ -160,7 +169,7 @@ def test_missing_reference_with_markdown_implicit():
     )
 
 
-def test_ignore_reference_with_special_char():
+def test_ignore_reference_with_special_char() -> None:
     """Check that references are not considered if there is a space character inside."""
     run_references_test(
         url_map={"a b": "foo.html#Foo"},
@@ -169,40 +178,40 @@ def test_ignore_reference_with_special_char():
     )
 
 
-def test_custom_required_reference():
+def test_custom_required_reference() -> None:
     """Check that external HTML-based references are expanded or reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = "<span data-autorefs-identifier=bar>foo</span> <span data-autorefs-identifier=ok>ok</span>"
-    output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
+    output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '[foo][bar] <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
     assert unmapped == ["bar"]
 
 
-def test_custom_optional_reference():
+def test_custom_optional_reference() -> None:
     """Check that optional HTML-based references are expanded and never reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional="bar">foo</span> <span data-autorefs-optional=ok>ok</span>'
-    output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
+    output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == 'foo <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
-    assert unmapped == []  # noqa: WPS520
+    assert unmapped == []
 
 
-def test_custom_optional_hover_reference():
+def test_custom_optional_hover_reference() -> None:
     """Check that optional-hover HTML-based references are expanded and never reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional-hover="bar">foo</span> <span data-autorefs-optional-hover=ok>ok</span>'
-    output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
+    output, unmapped = fix_refs(source, url_map.__getitem__)
     assert (
         output
         == '<span title="bar">foo</span> <a class="autorefs autorefs-internal" title="ok" href="ok.html#ok">ok</a>'
     )
-    assert unmapped == []  # noqa: WPS520
+    assert unmapped == []
 
 
-def test_external_references():
+def test_external_references() -> None:
     """Check that external references are marked as such."""
     url_map = {"example": "https://example.com"}
     source = '<span data-autorefs-optional="example">example</span>'
-    output, unmapped = fix_refs(source, url_map.__getitem__)  # noqa: WPS609
+    output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '<a class="autorefs autorefs-external" href="https://example.com">example</a>'
-    assert unmapped == []  # noqa: WPS520
+    assert unmapped == []

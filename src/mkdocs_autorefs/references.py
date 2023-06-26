@@ -1,19 +1,23 @@
 """Cross-references module."""
 
+from __future__ import annotations
+
 import re
 from html import escape, unescape
-from typing import Any, Callable, List, Match, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Match, Tuple
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
-from markdown import Markdown
 from markdown.extensions import Extension
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
 from markdown.util import INLINE_PLACEHOLDER_RE
 
+if TYPE_CHECKING:
+    from markdown import Markdown
+
 AUTO_REF_RE = re.compile(
     r"<span data-(?P<kind>autorefs-identifier|autorefs-optional|autorefs-optional-hover)="
-    r'("?)(?P<identifier>[^"<>]*)\2>(?P<title>.*?)</span>'
+    r'("?)(?P<identifier>[^"<>]*)\2>(?P<title>.*?)</span>',
 )
 """A regular expression to match mkdocs-autorefs' special reference markers
 in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page].
@@ -25,13 +29,13 @@ EvalIDType = Tuple[Any, Any, Any]
 class AutoRefInlineProcessor(ReferenceInlineProcessor):
     """A Markdown extension."""
 
-    def __init__(self, *args, **kwargs):  # noqa: D107
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D107
         super().__init__(REFERENCE_RE, *args, **kwargs)
 
     # Code based on
     # https://github.com/Python-Markdown/markdown/blob/8e7528fa5c98bf4652deb13206d6e6241d61630b/markdown/inlinepatterns.py#L780
 
-    def handleMatch(self, m, data) -> Union[Element, EvalIDType]:  # type: ignore[override]  # noqa: N802,WPS111
+    def handleMatch(self, m: Match[str], data: Any) -> Element | EvalIDType:  # type: ignore[override]  # noqa: N802
         """Handle an element that matched.
 
         Arguments:
@@ -71,7 +75,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
         Returns:
             A tuple containing the identifier, its end position, and whether it matched.
         """
-        m = self.RE_LINK.match(data, pos=index)  # noqa: WPS111
+        m = self.RE_LINK.match(data, pos=index)
         if not m:
             return None, index, False
 
@@ -87,7 +91,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
         end = m.end(0)
         return identifier, end, True
 
-    def makeTag(self, identifier: str, text: str) -> Element:  # type: ignore[override]  # noqa: N802,W0221
+    def makeTag(self, identifier: str, text: str) -> Element:  # type: ignore[override]  # noqa: N802
         """Create a tag that can be matched by `AUTO_REF_RE`.
 
         Arguments:
@@ -124,12 +128,12 @@ def relative_url(url_a: str, url_b: str) -> str:
 
     # go up as many times as remaining a parts' depth
     levels = len(parts_a) - 1
-    parts_relative = [".."] * levels + parts_b  # noqa: WPS435
+    parts_relative = [".."] * levels + parts_b
     relative = "/".join(parts_relative)
     return f"{relative}#{anchor}"
 
 
-def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable:  # noqa: WPS212,WPS231
+def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
     In our context, we match Markdown references and replace them with HTML links.
@@ -148,7 +152,7 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable: 
         and returning the replacement strings.
     """
 
-    def inner(match: Match):  # noqa: WPS212,WPS430
+    def inner(match: Match) -> str:
         identifier = match["identifier"]
         title = match["title"]
         kind = match["kind"]
@@ -158,7 +162,7 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable: 
         except KeyError:
             if kind == "autorefs-optional":
                 return title
-            elif kind == "autorefs-optional-hover":
+            if kind == "autorefs-optional-hover":
                 return f'<span title="{identifier}">{title}</span>'
             unmapped.append(identifier)
             if title == identifier:
@@ -176,7 +180,7 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: List[str]) -> Callable: 
     return inner
 
 
-def fix_refs(html: str, url_mapper: Callable[[str], str]) -> Tuple[str, List[str]]:
+def fix_refs(html: str, url_mapper: Callable[[str], str]) -> tuple[str, list[str]]:
     """Fix all references in the given HTML text.
 
     Arguments:
@@ -187,7 +191,7 @@ def fix_refs(html: str, url_mapper: Callable[[str], str]) -> Tuple[str, List[str
     Returns:
         The fixed HTML.
     """
-    unmapped = []  # type: ignore
+    unmapped: list[str] = []
     html = AUTO_REF_RE.sub(fix_ref(url_mapper, unmapped), html)
     return html, unmapped
 
@@ -206,5 +210,5 @@ class AutorefsExtension(Extension):
         md.inlinePatterns.register(
             AutoRefInlineProcessor(md),
             "mkdocs-autorefs",
-            priority=168,  # noqa: WPS432  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
+            priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
