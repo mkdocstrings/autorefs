@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
 
 from mkdocs.plugins import BasePlugin
-from mkdocs.utils import warning_filter
 
 from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
     from mkdocs.structure.toc import AnchorLink
 
 log = logging.getLogger(f"mkdocs.plugins.{__name__}")
-log.addFilter(warning_filter)
 
 
 class AutorefsPlugin(BasePlugin):
