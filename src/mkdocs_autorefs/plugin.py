@@ -23,7 +23,7 @@ from mkdocs.plugins import BasePlugin
 from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
 if TYPE_CHECKING:
-    from mkdocs.config import Config
+    from mkdocs.config.defaults import MkDocsConfig
     from mkdocs.structure.pages import Page
     from mkdocs.structure.toc import AnchorLink
 
@@ -113,7 +113,7 @@ class AutorefsPlugin(BasePlugin):
                 return relative_url(from_url, url)
         return url
 
-    def on_config(self, config: Config, **kwargs: Any) -> Config:  # noqa: ARG002
+    def on_config(self, config: MkDocsConfig) -> MkDocsConfig | None:
         """Instantiate our Markdown extension.
 
         Hook for the [`on_config` event](https://www.mkdocs.org/user-guide/plugins/#on_config).
@@ -122,7 +122,6 @@ class AutorefsPlugin(BasePlugin):
 
         Arguments:
             config: The MkDocs config object.
-            kwargs: Additional arguments passed by MkDocs.
 
         Returns:
             The modified config.
