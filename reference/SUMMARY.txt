@@ -1,0 +1,3 @@
+* [<code class="doc-symbol doc-symbol-nav doc-symbol-module"></code> mkdocs_autorefs](mkdocs_autorefs/index.md)
+    * [<code class="doc-symbol doc-symbol-nav doc-symbol-module"></code> plugin](mkdocs_autorefs/plugin.md)
+    * [<code class="doc-symbol doc-symbol-nav doc-symbol-module"></code> references](mkdocs_autorefs/references.md)
