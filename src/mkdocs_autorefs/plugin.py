@@ -27,7 +27,13 @@ if TYPE_CHECKING:
     from mkdocs.structure.pages import Page
     from mkdocs.structure.toc import AnchorLink
 
-log = logging.getLogger(f"mkdocs.plugins.{__name__}")
+try:
+    from mkdocs.plugins import get_plugin_logger
+
+    log = get_plugin_logger(__name__)
+except ImportError:
+    # TODO: remove once support for MkDocs <1.5 is dropped
+    log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 
 class AutorefsPlugin(BasePlugin):
@@ -126,7 +132,7 @@ class AutorefsPlugin(BasePlugin):
         Returns:
             The modified config.
         """
-        log.debug(f"{__name__}: Adding AutorefsExtension to the list")
+        log.debug("Adding AutorefsExtension to the list")
         config["markdown_extensions"].append(AutorefsExtension())
         return config
 
@@ -161,7 +167,7 @@ class AutorefsPlugin(BasePlugin):
             The same HTML. We only use this hook to map anchors to URLs.
         """
         if self.scan_toc:
-            log.debug(f"{__name__}: Mapping identifiers to URLs for page {page.file.src_path}")
+            log.debug(f"Mapping identifiers to URLs for page {page.file.src_path}")
             for item in page.toc.items:
                 self.map_urls(page.url, item)
         return html
@@ -200,15 +206,13 @@ class AutorefsPlugin(BasePlugin):
         Returns:
             Modified HTML.
         """
-        log.debug(f"{__name__}: Fixing references in page {page.file.src_path}")
+        log.debug(f"Fixing references in page {page.file.src_path}")
 
         url_mapper = functools.partial(self.get_item_url, from_url=page.url, fallback=self.get_fallback_anchor)
         fixed_output, unmapped = fix_refs(output, url_mapper)
 
         if unmapped and log.isEnabledFor(logging.WARNING):
             for ref in unmapped:
-                log.warning(
-                    f"{__name__}: {page.file.src_path}: Could not find cross-reference target '[{ref}]'",
-                )
+                log.warning(f"{page.file.src_path}: Could not find cross-reference target '[{ref}]'")
 
         return fixed_output
