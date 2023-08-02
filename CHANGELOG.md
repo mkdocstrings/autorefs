@@ -5,6 +5,26 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [0.5.0](https://github.com/mkdocstrings/autorefs/releases/tag/0.5.0) - 2023-08-02
+
+<small>[Compare with 0.4.1](https://github.com/mkdocstrings/autorefs/compare/0.4.1...0.5.0)</small>
+
+### Breaking Changes
+
+- Drop support for Python 3.7
+
+### Build
+
+- Migrate to pdm-backend ([48b92fb](https://github.com/mkdocstrings/autorefs/commit/48b92fb2c12e97242007e5fbbc1b18a36b7f29b6) by Michał Górny).
+
+### Bug Fixes
+
+- Stop using deprecated `warning_filter` ([7721103](https://github.com/mkdocstrings/autorefs/commit/77211035bb10b8e55f595eb7d0392344669ffdec) by Kyle King). [PR #30](https://github.com/mkdocstrings/autorefs/pull/30)
+
+### Code Refactoring
+
+- Use new MkDocs plugin logger if available ([ca8d758](https://github.com/mkdocstrings/autorefs/commit/ca8d75805ac289e9a5a8123565aa7833b34bd214) by Timothée Mazzucotelli).
+
 ## [0.4.1](https://github.com/mkdocstrings/autorefs/releases/tag/0.4.1) - 2022-03-07
 
 <small>[Compare with 0.4.0](https://github.com/mkdocstrings/autorefs/compare/0.4.0...0.4.1)</small>
