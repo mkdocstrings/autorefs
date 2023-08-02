@@ -107,6 +107,7 @@ plugins:
       python:
         import:
         - https://docs.python.org/3/objects.inv
+        - https://www.mkdocs.org/objects.inv
         options:
           docstring_options:
             ignore_init_summary: true
