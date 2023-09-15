@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 AUTO_REF_RE = re.compile(
     r"<span data-(?P<kind>autorefs-identifier|autorefs-optional|autorefs-optional-hover)="
     r'("?)(?P<identifier>[^"<>]*)\2>(?P<title>.*?)</span>',
+    flags=re.DOTALL,
 )
 """A regular expression to match mkdocs-autorefs' special reference markers
 in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page].
