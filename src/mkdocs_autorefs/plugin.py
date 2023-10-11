@@ -180,7 +180,7 @@ class AutorefsPlugin(BasePlugin):
 
         if self.config["scan_html_tags"]:
             # Matches any html anchors with the id property (e.g. <a id="xx">)
-            for match in re.findall(r"""<.*?id=["']([_\w-]*)["'].*?>""", html):
+            for match in re.findall(r"""<a .*?id=["']([_\w-]*)["'].*?>""", html):
                 self.register_anchor(page.url, match)
 
         return html
