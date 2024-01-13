@@ -65,7 +65,8 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
     def evalId(self, data: str, index: int, text: str) -> EvalIDType:  # noqa: N802 (parent's casing)
         """Evaluate the id portion of `[ref][id]`.
 
-        If `[ref][]` use `[ref]`.
+        If `[ref][]` use "ref".
+        If `[ref][id]` use "id".
 
         Arguments:
             data: The data to evaluate.
