@@ -5,13 +5,14 @@
 [![pypi version](https://img.shields.io/pypi/v/mkdocs-autorefs.svg)](https://pypi.org/project/mkdocs-autorefs/)
 [![conda version](https://img.shields.io/conda/vn/conda-forge/mkdocs-autorefs.svg)](https://anaconda.org/conda-forge/mkdocs-autorefs)
 [![gitpod](https://img.shields.io/badge/gitpod-workspace-blue.svg?style=flat)](https://gitpod.io/#https://github.com/mkdocstrings/autorefs)
-[![gitter](https://badges.gitter.im/join%20chat.svg)](https://gitter.im/mkdocstrings/autorefs)
+[![gitter](https://badges.gitter.im/join%20chat.svg)](https://app.gitter.im/#/room/#autorefs:gitter.im)
 
 Automatically link across pages in MkDocs.
 
 ## Installation
 
 With `pip`:
+
 ```bash
 python3 -m pip install mkdocs-autorefs
 ```
