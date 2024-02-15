@@ -111,6 +111,15 @@ def test_reference_to_relative_path() -> None:
     )
 
 
+def test_multiline_links() -> None:
+    """Check that links with multiline text are recognized."""
+    run_references_test(
+        url_map={"foo-bar": "foo.html#bar"},
+        source="This [Foo\nbar][foo-bar].",
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#bar">Foo\nbar</a>.</p>',
+    )
+
+
 def test_no_reference_with_space() -> None:
     """Check that references with spaces are not fixed."""
     run_references_test(
