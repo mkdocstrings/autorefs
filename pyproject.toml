@@ -100,3 +100,7 @@ typing = [
 security = [
     "safety>=2",
 ]
+
+[tool.ruff]
+# Full config is in config/ruff.toml
+line-length = 132
