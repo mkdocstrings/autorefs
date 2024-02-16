@@ -241,7 +241,6 @@ class AutorefsExtension(Extension):
         """
         super().__init__(**kwargs)
         self.anchor_scanner_factory = anchor_scanner_factory
-        self.anchor_scanner: AnchorScannerTreeProcessor | None = None
 
     def extendMarkdown(self, md: Markdown) -> None:  # noqa: N802 (casing: parent method's name)
         """Register the extension.
@@ -257,9 +256,8 @@ class AutorefsExtension(Extension):
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
         if self.anchor_scanner_factory:
-            self.anchor_scanner = self.anchor_scanner_factory(md)
             md.treeprocessors.register(
-                self.anchor_scanner,
+                self.anchor_scanner_factory(md),
                 "mkdocs-autorefs-anchors-scanner",
                 priority=0,
             )

@@ -73,9 +73,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         super().__init__()
         self._url_map: dict[str, str] = {}
         self._abs_url_map: dict[str, str] = {}
-        self._extension: AutorefsExtension | None = None
         self.get_fallback_anchor: Callable[[str], str | None] | None = None
-        self.current_page: str | None = None
 
     def register_anchor(self, page: str, identifier: str, anchor: str | None = None) -> None:
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
@@ -151,15 +149,23 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             The modified config.
         """
         log.debug("Adding AutorefsExtension to the list")
-        anchor_scanner_factory = (
-            partial(AnchorScannerTreeProcessor, self) if self.scan_anchors or self.config.scan_anchors else None
-        )
-        # anchor_scanner_factory = None
-        self._extension = AutorefsExtension(anchor_scanner_factory=anchor_scanner_factory)
-        config["markdown_extensions"].append(self._extension)
+        scan_anchors = self.scan_anchors or self.config.scan_anchors
+        anchor_scanner_factory = partial(AnchorScannerTreeProcessor, self) if scan_anchors else None
+        config["markdown_extensions"].append(AutorefsExtension(anchor_scanner_factory))
         return config
 
-    def on_page_markdown(self, markdown: str, *, page: Page, **kwargs: Any) -> str | None:  # noqa: ARG002, D102
+    def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
+        """Remember which page is the current one.
+
+        Arguments:
+            markdown: Input Markdown.
+            page: The related MkDocs page instance.
+            kwargs: Additional arguments passed by MkDocs.
+
+        Returns:
+            The same Markdown. We only use this hook to keep a reference to the current page URL,
+                used during Markdown conversion by the anchor scanner tree processor.
+        """
         self.current_page = page.url
         return markdown
 
