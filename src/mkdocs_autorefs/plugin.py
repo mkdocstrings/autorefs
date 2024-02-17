@@ -15,7 +15,6 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
-import re
 from functools import partial
 from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
@@ -65,8 +64,6 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     scan_toc: bool = True
     scan_anchors: bool = False
     current_page: str | None = None
-
-    _re_anchors = re.compile(r'<a(?:\s+href="([^"]*)")?\s+id="([^"]+)"\s*>')
 
     def __init__(self) -> None:
         """Initialize the object."""
@@ -189,10 +186,6 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             log.debug(f"Mapping identifiers to URLs for page {page.file.src_path}")
             for item in page.toc.items:
                 self.map_urls(page.url, item)
-
-        # if self.scan_anchors or self.config.scan_anchors:
-        #     for href, hid in re.findall(self._re_anchors, html):
-        #         self.register_anchor(page.url, identifier=hid, anchor=href.lstrip("#"))
 
         return html
 
