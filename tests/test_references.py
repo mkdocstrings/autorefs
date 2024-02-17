@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from functools import partial
 from textwrap import dedent
 
 import markdown
 import pytest
 
 from mkdocs_autorefs.plugin import AutorefsPlugin
-from mkdocs_autorefs.references import AnchorScannerTreeProcessor, AutorefsExtension, fix_refs, relative_url
+from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
 
 @pytest.mark.parametrize(
@@ -233,7 +232,7 @@ def test_external_references() -> None:
 def test_register_html_anchors() -> None:
     """Check that HTML anchors are registered when enabled."""
     plugin = AutorefsPlugin()
-    md = markdown.Markdown(extensions=["attr_list", AutorefsExtension(partial(AnchorScannerTreeProcessor, plugin))])
+    md = markdown.Markdown(extensions=["attr_list", AutorefsExtension(plugin)])
     plugin.current_page = ""
     md.convert(
         dedent(

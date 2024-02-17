@@ -246,7 +246,7 @@ class AutorefsExtension(Extension):
 
     def __init__(
         self,
-        anchor_scanner_factory: Callable[[Markdown], AnchorScannerTreeProcessor] | None = None,
+        plugin: AutorefsPlugin | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the Markdown extension.
@@ -256,7 +256,7 @@ class AutorefsExtension(Extension):
             **kwargs: Keyword arguments passed to the [base constructor][markdown.extensions.Extension].
         """
         super().__init__(**kwargs)
-        self.anchor_scanner_factory = anchor_scanner_factory
+        self.plugin = plugin
 
     def extendMarkdown(self, md: Markdown) -> None:  # noqa: N802 (casing: parent method's name)
         """Register the extension.
@@ -271,9 +271,9 @@ class AutorefsExtension(Extension):
             "mkdocs-autorefs",
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
-        if self.anchor_scanner_factory:
+        if self.plugin:
             md.treeprocessors.register(
-                self.anchor_scanner_factory(md),
+                AnchorScannerTreeProcessor(self.plugin, md),
                 "mkdocs-autorefs-anchors-scanner",
                 priority=0,
             )

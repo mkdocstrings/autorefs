@@ -15,7 +15,6 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
-from functools import partial
 from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
 
@@ -25,7 +24,7 @@ from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.plugins import BasePlugin
 from mkdocs.structure.pages import Page
 
-from mkdocs_autorefs.references import AnchorScannerTreeProcessor, AutorefsExtension, fix_refs, relative_url
+from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
@@ -147,8 +146,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         """
         log.debug("Adding AutorefsExtension to the list")
         scan_anchors = self.scan_anchors or self.config.scan_anchors
-        anchor_scanner_factory = partial(AnchorScannerTreeProcessor, self) if scan_anchors else None
-        config["markdown_extensions"].append(AutorefsExtension(anchor_scanner_factory))
+        config["markdown_extensions"].append(AutorefsExtension(plugin=self if scan_anchors else None))
         return config
 
     def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
