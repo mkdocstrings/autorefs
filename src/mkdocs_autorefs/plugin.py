@@ -186,7 +186,6 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             log.debug(f"Mapping identifiers to URLs for page {page.file.src_path}")
             for item in page.toc.items:
                 self.map_urls(page.url, item)
-
         return html
 
     def map_urls(self, base_url: str, anchor: AnchorLink) -> None:
