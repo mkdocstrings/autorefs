@@ -1,10 +1,8 @@
 --8<-- "README.md"
 
-[](#hello){#hello1}
+[](){#hello}
+## Hello world
 
-## Hello
+helllo.
 
-Hello.
-
-Link to [Hello 1][hello1].
-Link to [Hello 2][hello2].
+[hello][hello]

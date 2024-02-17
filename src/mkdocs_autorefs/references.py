@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from html import escape, unescape
-from typing import TYPE_CHECKING, Any, Callable, Match, Tuple
+from itertools import zip_longest
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match, Tuple
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
@@ -204,6 +206,8 @@ def fix_refs(html: str, url_mapper: Callable[[str], str]) -> tuple[str, list[str
 class AnchorScannerTreeProcessor(Treeprocessor):
     """Tree processor to scan and register HTML anchors."""
 
+    _htags: ClassVar[set[str]] = {"h1", "h2", "h3", "h4", "h5", "h6"}
+
     def __init__(self, plugin: AutorefsPlugin, md: Markdown | None = None) -> None:
         """Initialize the tree processor.
 
@@ -217,12 +221,24 @@ class AnchorScannerTreeProcessor(Treeprocessor):
         if self.plugin.current_page is not None:
             self._scan_anchors(root)
 
-    def _scan_anchors(self, parent: Element) -> None:
-        for el in parent:
-            if el.tag == "a" and (hid := el.get("id")):
-                self.plugin.register_anchor(self.plugin.current_page, hid, el.get("href", "").lstrip("#"))  # type: ignore[arg-type]
+    @staticmethod
+    def _slugify(value: str, separator: str = "-") -> str:
+        value = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode("ascii")
+        value = re.sub(r"[^\w\s-]", "", value.lower())
+        return re.sub(r"[-_\s]+", separator, value).strip("-_")
+
+    def _scan_anchors(self, parent: Element) -> str | None:
+        hid = None
+        for el, next_el in zip_longest(parent, parent[1:], fillvalue=Element("/")):
+            if el.tag == "a":
+                hid = el.get("id")
+            elif el.tag == "p" and (hid := self._scan_anchors(el)):
+                href = (next_el.get("id") or self._slugify(next_el.text or "")) if next_el.tag in self._htags else ""
+                self.plugin.register_anchor(self.plugin.current_page, hid, href)  # type: ignore[arg-type]
+                hid = None
             else:
-                self._scan_anchors(el)
+                hid = self._scan_anchors(el)
+        return hid
 
 
 class AutorefsExtension(Extension):

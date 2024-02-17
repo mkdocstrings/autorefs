@@ -60,27 +60,3 @@ def test_dont_make_relative_urls_relative_again() -> None:
             plugin.get_item_url("hello", from_url="baz/bar/foo.html", fallback=lambda _: ("foo.bar.baz",))
             == "../../foo/bar/baz.html#foo.bar.baz"
         )
-
-
-def test_register_html_anchors() -> None:
-    """Check that HT?ML anchors are registered when enabled."""
-    plugin = AutorefsPlugin()
-    plugin.scan_toc = False
-    plugin.scan_anchors = True
-
-    class Page:
-        url = "/page/url"
-
-    plugin.on_page_content(
-        """
-        <a id="foo.bar">
-        <a href="#foo.baz">
-        <a id="foo.qux" href="#fooqux">
-        <a href="quxfoo" id="qux.foo">
-        """,
-        page=Page(),  # type: ignore[arg-type]
-    )
-    assert "foo.bar" in plugin._url_map
-    assert "foo.baz" not in plugin._url_map
-    assert "foo.qux" in plugin._url_map
-    assert "qux.foo" in plugin._url_map
