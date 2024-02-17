@@ -252,7 +252,7 @@ class AutorefsExtension(Extension):
         """Initialize the Markdown extension.
 
         Parameters:
-            anchor_scanner_factory: A callable that returns an instance of the anchor scanner tree processor.
+            plugin: An optional reference to the autorefs plugin (to pass it to the anchor scanner tree processor).
             **kwargs: Keyword arguments passed to the [base constructor][markdown.extensions.Extension].
         """
         super().__init__(**kwargs)
@@ -262,6 +262,8 @@ class AutorefsExtension(Extension):
         """Register the extension.
 
         Add an instance of our [`AutoRefInlineProcessor`][mkdocs_autorefs.references.AutoRefInlineProcessor] to the Markdown parser.
+        Also optionally add an instance of our [`AnchorScannerTreeProcessor`][mkdocs_autorefs.references.AnchorScannerTreeProcessor]
+        to the Markdown parser if a reference to the autorefs plugin was passed to this extension.
 
         Arguments:
             md: A `markdown.Markdown` instance.
