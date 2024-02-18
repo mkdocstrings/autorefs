@@ -222,23 +222,39 @@ class AnchorScannerTreeProcessor(Treeprocessor):
             self._scan_anchors(root)
 
     @staticmethod
-    def _slugify(value: str, separator: str = "-") -> str:
+    def _slug(value: str, separator: str = "-") -> str:
         value = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode("ascii")
         value = re.sub(r"[^\w\s-]", "", value.lower())
         return re.sub(r"[-_\s]+", separator, value).strip("-_")
 
-    def _scan_anchors(self, parent: Element) -> str | None:
-        hid = None
+    def _scan_anchors(self, parent: Element) -> list[str]:
+        ids = []
+        # We iterate on pairs of elements, to check if the next element is a heading (alias feature).
         for el, next_el in zip_longest(parent, parent[1:], fillvalue=Element("/")):
             if el.tag == "a":
-                hid = el.get("id")
-            elif el.tag == "p" and (hid := self._scan_anchors(el)):
-                href = (next_el.get("id") or self._slugify(next_el.text or "")) if next_el.tag in self._htags else ""
-                self.plugin.register_anchor(self.plugin.current_page, hid, href)  # type: ignore[arg-type]
-                hid = None
+                # We found an anchor. Record its id if it has one.
+                if hid := el.get("id"):
+                    if el.tail and el.tail.strip():
+                        # If the anchor has a non-whitespace-only tail, it's not an alias:
+                        # register it immediately.
+                        self.plugin.register_anchor(self.plugin.current_page, hid)  # type: ignore[arg-type]
+                    else:
+                        # Else record its id and continue.
+                        ids.append(hid)
+            elif el.tag == "p":
+                if ids := self._scan_anchors(el):
+                    # Markdown anchors are always rendered as `a` tags within a `p` tag.
+                    # Headings therefore appear after the `p` tag. Here the current element
+                    # is a `p` tag and it contains at least one anchor with an id.
+                    # We can check if the next element is a heading, and use its id as href.
+                    href = (next_el.get("id") or self._slug(next_el.text or "")) if next_el.tag in self._htags else ""
+                    for hid in ids:
+                        self.plugin.register_anchor(self.plugin.current_page, hid, href)  # type: ignore[arg-type]
+                    ids.clear()
             else:
-                hid = self._scan_anchors(el)
-        return hid
+                # Recurse into sub-elements.
+                ids = self._scan_anchors(el)
+        return ids
 
 
 class AutorefsExtension(Extension):

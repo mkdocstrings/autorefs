@@ -229,8 +229,8 @@ def test_external_references() -> None:
     assert unmapped == []
 
 
-def test_register_html_anchors() -> None:
-    """Check that HTML anchors are registered when enabled."""
+def test_register_markdown_anchors() -> None:
+    """Check that Markdown anchors are registered when enabled."""
     plugin = AutorefsPlugin()
     md = markdown.Markdown(extensions=["attr_list", AutorefsExtension(plugin)])
     plugin.current_page = ""
@@ -238,14 +238,27 @@ def test_register_html_anchors() -> None:
         dedent(
             """
             [](){#foo}
-            ## Heading
+            ## Heading foo
 
             Paragraph 1.
 
             [](){#bar}
             Paragraph 2.
+
+            [](){#alias1}
+            [](){#alias2}
+            ## Heading bar
+
+            [](){#alias3}
+            Text.
+            [](){#alias4}
+            ## Heading baz
             """,
         ),
     )
-    assert plugin._url_map["foo"] == "#heading"
+    assert plugin._url_map["foo"] == "#heading-foo"
     assert plugin._url_map["bar"] == "#bar"
+    assert plugin._url_map["alias1"] == "#heading-bar"
+    assert plugin._url_map["alias2"] == "#heading-bar"
+    assert plugin._url_map["alias3"] == "#alias3"
+    assert plugin._url_map["alias4"] == "#heading-baz"
