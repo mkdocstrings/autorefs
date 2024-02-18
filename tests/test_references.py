@@ -232,7 +232,7 @@ def test_external_references() -> None:
 def test_register_markdown_anchors() -> None:
     """Check that Markdown anchors are registered when enabled."""
     plugin = AutorefsPlugin()
-    md = markdown.Markdown(extensions=["attr_list", AutorefsExtension(plugin)])
+    md = markdown.Markdown(extensions=["attr_list", "toc", AutorefsExtension(plugin)])
     plugin.current_page = ""
     md.convert(
         dedent(

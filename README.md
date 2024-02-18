@@ -53,20 +53,29 @@ Note that this plugin's behavior is undefined when trying to link to a heading t
 
 ### Markdown anchors
 
-The autorefs plugin offers a feature called "Markdown anchors". Such anchors can be added anywhere in a document, and linked to from any other place. The syntax is `[](){#id-of-the-anchor}`. First you must enable the feature:
+The autorefs plugin offers a feature called "Markdown anchors". Such anchors can be added anywhere in a document, and linked to from any other place.
+
+The syntax is:
+
+```md
+[](){#id-of-the-anchor}
+```
+
+If you look closely, it starts with the usual syntax for a link, `[]()`, except both the text value and URL of the link are empty. Then we see `{#id-of-the-anchor}`, which is the syntax supported by the [`attr_list`](https://python-markdown.github.io/extensions/attr_list/) extension. It sets an HTML id to the anchor element. The autorefs plugin simply gives a meaning to such anchors with ids. Note that raw HTML anchors like `<a id="foo"></a>` are not supported.
+
+The `attr_list` extension must be enabled for the Markdown anchors feature to work:
 
 ```yaml
 # mkdocs.yml
 plugins:
   - search
   - autorefs
-      scan_anchors: true
 
 markdown_extensions:
   - attr_list
 ```
 
-Then, add an anchor to a document:
+Now, you can add anchors to documents:
 
 ```md
 Somewhere in a document.
@@ -76,9 +85,11 @@ Somewhere in a document.
 Paragraph about foobar.
 ```
 
-Now you can link to this anchor with the usual syntax:
+...making it possible to link to this anchor with our automatic links:
 
 ```md
+In any document.
+
 Check out the [paragraph about foobar][foobar-pararaph].
 ```
 
@@ -97,27 +108,25 @@ Linking to the `foobar` anchor will bring you directly to the heading, not the a
 ## How to contribute to the project?
 ```
 
-Such aliases are especially useful when the same headings appear in several different pages. Without aliases, linking to the heading was undefined behavior (it could lead to any one of the headings, undeterministically). With unique aliases above headings, you can make sure to link to the right heading.
+Such aliases are especially useful when the same headings appear in several different pages. Without aliases, linking to the heading is undefined behavior (it could lead to any one of the headings). With unique aliases above headings, you can make sure to link to the right heading.
 
 For example, consider the following setup. You have one document per operating system describing how to install a project with the OS package manager or from sources:
 
-```
+```tree
 docs/
-    install/
-        arch.md
-        debian.md
-        gentoo.md
+  install/
+    arch.md
+    debian.md
+    gentoo.md
 ```
 
 Each page has:
 
 ```md
 ## Install with package manager
-
 ...
 
 ## Install from sources
-
 ...
 ```
 
@@ -126,12 +135,10 @@ You don't want to change headings and make them redundant, like `## Arch: Instal
 ```md
 [](){#arch-install-pkg}
 ## Install with package manager
-
 ...
 
 [](){#arch-install-src}
 ## Install from sources
-
 ...
 ```
 

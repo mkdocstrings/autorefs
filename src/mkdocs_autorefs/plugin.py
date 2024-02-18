@@ -18,6 +18,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
 
+from markdown.extensions.attr_list import AttrListExtension
 from mkdocs.config.base import Config
 from mkdocs.config.config_options import Type
 from mkdocs.config.defaults import MkDocsConfig
@@ -145,7 +146,13 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             The modified config.
         """
         log.debug("Adding AutorefsExtension to the list")
-        scan_anchors = self.scan_anchors or self.config.scan_anchors
+        for ext in config.markdown_extensions:
+            if ext == "attr_list" or isinstance(ext, AttrListExtension):
+                log.debug("Enabling Markdown anchors feature")
+                scan_anchors = True
+                break
+        else:
+            scan_anchors = False
         config["markdown_extensions"].append(AutorefsExtension(plugin=self if scan_anchors else None))
         return config
 

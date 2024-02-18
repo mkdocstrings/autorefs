@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 from html import escape, unescape
 from itertools import zip_longest
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match, Tuple
@@ -216,16 +215,11 @@ class AnchorScannerTreeProcessor(Treeprocessor):
         """
         super().__init__(md)
         self.plugin = plugin
+        self._slug = md.treeprocessors["toc"].slugify
 
     def run(self, root: Element) -> None:  # noqa: D102
         if self.plugin.current_page is not None:
             self._scan_anchors(root)
-
-    @staticmethod
-    def _slug(value: str, separator: str = "-") -> str:
-        value = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode("ascii")
-        value = re.sub(r"[^\w\s-]", "", value.lower())
-        return re.sub(r"[-_\s]+", separator, value).strip("-_")
 
     def _scan_anchors(self, parent: Element) -> list[str]:
         ids = []
@@ -233,14 +227,14 @@ class AnchorScannerTreeProcessor(Treeprocessor):
         for el, next_el in zip_longest(parent, parent[1:], fillvalue=Element("/")):
             if el.tag == "a":
                 # We found an anchor. Record its id if it has one.
-                if hid := el.get("id"):
+                if anchor_id := el.get("id"):
                     if el.tail and el.tail.strip():
                         # If the anchor has a non-whitespace-only tail, it's not an alias:
                         # register it immediately.
-                        self.plugin.register_anchor(self.plugin.current_page, hid)  # type: ignore[arg-type]
+                        self.plugin.register_anchor(self.plugin.current_page, anchor_id)  # type: ignore[arg-type]
                     else:
                         # Else record its id and continue.
-                        ids.append(hid)
+                        ids.append(anchor_id)
             elif el.tag == "p":
                 if ids := self._scan_anchors(el):
                     # Markdown anchors are always rendered as `a` tags within a `p` tag.
@@ -248,8 +242,8 @@ class AnchorScannerTreeProcessor(Treeprocessor):
                     # is a `p` tag and it contains at least one anchor with an id.
                     # We can check if the next element is a heading, and use its id as href.
                     href = (next_el.get("id") or self._slug(next_el.text or "")) if next_el.tag in self._htags else ""
-                    for hid in ids:
-                        self.plugin.register_anchor(self.plugin.current_page, hid, href)  # type: ignore[arg-type]
+                    for anchor_id in ids:
+                        self.plugin.register_anchor(self.plugin.current_page, anchor_id, href)  # type: ignore[arg-type]
                     ids.clear()
             else:
                 # Recurse into sub-elements.
