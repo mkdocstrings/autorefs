@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import re
 from html import escape, unescape
-from typing import TYPE_CHECKING, Any, Callable, Match, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Match
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
+import markupsafe
 from markdown.extensions import Extension
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
-from markdown.util import INLINE_PLACEHOLDER_RE
+from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 
 if TYPE_CHECKING:
     from markdown import Markdown
@@ -24,8 +25,6 @@ AUTO_REF_RE = re.compile(
 in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page].
 """
 
-EvalIDType = Tuple[Any, Any, Any]
-
 
 class AutoRefInlineProcessor(ReferenceInlineProcessor):
     """A Markdown extension."""
@@ -36,7 +35,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
     # Code based on
     # https://github.com/Python-Markdown/markdown/blob/8e7528fa5c98bf4652deb13206d6e6241d61630b/markdown/inlinepatterns.py#L780
 
-    def handleMatch(self, m: Match[str], data: Any) -> Element | EvalIDType:  # type: ignore[override]  # noqa: N802
+    def handleMatch(self, m: Match[str], data: str) -> tuple[Element | None, int | None, int | None]:  # type: ignore[override]  # noqa: N802
         """Handle an element that matched.
 
         Arguments:
@@ -51,7 +50,7 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
             return None, None, None
 
         identifier, end, handled = self.evalId(data, index, text)
-        if not handled:
+        if not handled or identifier is None:
             return None, None, None
 
         if re.search(r"[/ \x00-\x1f]", identifier):
@@ -61,9 +60,9 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
             #   but references with Markdown formatting are not possible anyway.
             return None, m.start(0), end
 
-        return self.makeTag(identifier, text), m.start(0), end
+        return self._make_tag(identifier, text), m.start(0), end
 
-    def evalId(self, data: str, index: int, text: str) -> EvalIDType:  # noqa: N802 (parent's casing)
+    def evalId(self, data: str, index: int, text: str) -> tuple[str | None, int, bool]:  # noqa: N802 (parent's casing)
         """Evaluate the id portion of `[ref][id]`.
 
         If `[ref][]` use `[ref]`.
@@ -86,13 +85,22 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
             # Allow the entire content to be one placeholder, with the intent of catching things like [`Foo`][].
             # It doesn't catch [*Foo*][] though, just due to the priority order.
             # https://github.com/Python-Markdown/markdown/blob/1858c1b601ead62ed49646ae0d99298f41b1a271/markdown/inlinepatterns.py#L78
-            if INLINE_PLACEHOLDER_RE.fullmatch(identifier):
-                identifier = self.unescape(identifier)
+            if match := INLINE_PLACEHOLDER_RE.fullmatch(identifier):
+                stashed_nodes: dict[str, Element | str] = self.md.treeprocessors["inline"].stashed_nodes  # type: ignore[attr-defined]
+                el = stashed_nodes.get(match[1])
+                if isinstance(el, Element) and el.tag == "code":
+                    identifier = "".join(el.itertext())
+                    # Special case: allow pymdownx.inlinehilite raw <code> snippets but strip them back to unhighlighted.
+                    if match := HTML_PLACEHOLDER_RE.fullmatch(identifier):
+                        stash_index = int(match.group(1))
+                        html = self.md.htmlStash.rawHtmlBlocks[stash_index]
+                        identifier = markupsafe.Markup(html).striptags()
+                        self.md.htmlStash.rawHtmlBlocks[stash_index] = escape(identifier)
 
         end = m.end(0)
         return identifier, end, True
 
-    def makeTag(self, identifier: str, text: str) -> Element:  # type: ignore[override]  # noqa: N802
+    def _make_tag(self, identifier: str, text: str) -> Element:
         """Create a tag that can be matched by `AUTO_REF_RE`.
 
         Arguments:
