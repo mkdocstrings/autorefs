@@ -227,8 +227,9 @@ class AnchorScannerTreeProcessor(Treeprocessor):
                 # We found an anchor. Record its id if it has one.
                 if anchor_id := el.get("id"):
                     pending_anchors.append(anchor_id)
+                # If the element has text or a link, it's not an alias.
                 # Non-whitespace text after the element interrupts the chain, aliases can't apply.
-                if el.tail and el.tail.strip():
+                if el.text or el.get("href") or (el.tail and el.tail.strip()):
                     pending_anchors.flush()
 
             elif el.tag == "p":

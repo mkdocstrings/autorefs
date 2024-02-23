@@ -257,9 +257,14 @@ def test_register_markdown_anchors() -> None:
             [](){#alias5}
             [](){#alias6}
             Decoy.
-            ## Heading more
+            ## Heading more1
 
             [](){#alias7}
+            [decoy](){#alias8}
+            [](){#alias9}
+            ## Heading more2
+
+            [](){#alias10}
             """,
         ),
     )
@@ -273,4 +278,7 @@ def test_register_markdown_anchors() -> None:
         "alias5": "page#alias5",
         "alias6": "page#alias6",
         "alias7": "page#alias7",
+        "alias8": "page#alias8",
+        "alias9": "page#heading-more2",
+        "alias10": "page#alias10",
     }
