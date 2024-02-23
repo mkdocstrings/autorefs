@@ -15,9 +15,10 @@ from markdown.util import INLINE_PLACEHOLDER_RE
 if TYPE_CHECKING:
     from markdown import Markdown
 
+_ATTR_VALUE = r'"[^"<>]+"|[^"<> ]+'  # Possibly with double quotes around
 AUTO_REF_RE = re.compile(
-    r"<span data-(?P<kind>autorefs-(?:identifier|optional|optional-hover))="
-    r'("?)(?P<identifier>[^"<>]+)\2(?P<attrs> [^<>]+)?>(?P<title>.*?)</span>',
+    rf"<span data-(?P<kind>autorefs-(?:identifier|optional|optional-hover))=(?P<identifier>{_ATTR_VALUE})"
+    rf"(?: class=(?P<class>{_ATTR_VALUE}))?(?P<attrs> [^<>]+)?>(?P<title>.*?)</span>",
     flags=re.DOTALL,
 )
 """A regular expression to match mkdocs-autorefs' special reference markers
@@ -154,10 +155,11 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
     """
 
     def inner(match: Match) -> str:
-        identifier = match["identifier"]
+        identifier = match["identifier"].strip('"')
         title = match["title"]
         kind = match["kind"]
         attrs = match["attrs"] or ""
+        classes = (match["class"] or "").strip('"').split()
 
         try:
             url = url_mapper(unescape(identifier))
@@ -173,7 +175,7 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
 
         parsed = urlsplit(url)
         external = parsed.scheme or parsed.netloc
-        classes = ["autorefs", "autorefs-external" if external else "autorefs-internal"]
+        classes = ["autorefs", "autorefs-external" if external else "autorefs-internal", *classes]
         class_attr = " ".join(classes)
         if kind == "autorefs-optional-hover":
             return f'<a class="{class_attr}" title="{identifier}" href="{escape(url)}"{attrs}>{title}</a>'
