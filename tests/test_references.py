@@ -108,7 +108,7 @@ def test_reference_implicit_with_code_inlinehilite_plain() -> None:
 def test_reference_implicit_with_code_inlinehilite_python() -> None:
     """Check implicit references (identifier in backticks, syntax-highlighted by inlinehilite)."""
     run_references_test(
-        extensions={"pymdownx.inlinehilite": {"style_plain_text": "python"}},
+        extensions={"pymdownx.inlinehilite": {"style_plain_text": "python"}, "pymdownx.highlight": {}},
         url_map={"pathlib.Path": "pathlib.html#Path"},
         source="This [`pathlib.Path`][].",
         output='<p>This <a class="autorefs autorefs-internal" href="pathlib.html#Path"><code class="highlight"><span class="n">pathlib</a><span class="o">.</span><span class="n">Path</span></code></span>.</p>',
