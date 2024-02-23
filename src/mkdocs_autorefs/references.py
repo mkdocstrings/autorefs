@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     from markdown import Markdown
 
 AUTO_REF_RE = re.compile(
-    r"<span data-(?P<kind>autorefs-identifier|autorefs-optional|autorefs-optional-hover)="
-    r'("?)(?P<identifier>[^"<>]*)\2>(?P<title>.*?)</span>',
+    r"<span data-(?P<kind>autorefs-(?:identifier|optional|optional-hover))="
+    r'("?)(?P<identifier>[^"<>]+)\2(?P<attrs> [^<>]+)?>(?P<title>.*?)</span>',
     flags=re.DOTALL,
 )
 """A regular expression to match mkdocs-autorefs' special reference markers
@@ -157,6 +157,7 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
         identifier = match["identifier"]
         title = match["title"]
         kind = match["kind"]
+        attrs = match["attrs"] or ""
 
         try:
             url = url_mapper(unescape(identifier))
@@ -175,8 +176,8 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
         classes = ["autorefs", "autorefs-external" if external else "autorefs-internal"]
         class_attr = " ".join(classes)
         if kind == "autorefs-optional-hover":
-            return f'<a class="{class_attr}" title="{identifier}" href="{escape(url)}">{title}</a>'
-        return f'<a class="{class_attr}" href="{escape(url)}">{title}</a>'
+            return f'<a class="{class_attr}" title="{identifier}" href="{escape(url)}"{attrs}>{title}</a>'
+        return f'<a class="{class_attr}" href="{escape(url)}"{attrs}>{title}</a>'
 
     return inner
 

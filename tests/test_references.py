@@ -224,3 +224,11 @@ def test_external_references() -> None:
     output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '<a class="autorefs autorefs-external" href="https://example.com">example</a>'
     assert unmapped == []
+
+
+def test_keep_data_attributes() -> None:
+    """Keep HTML data attributes from autorefs spans."""
+    url_map = {"example": "https://e.com"}
+    source = '<span data-autorefs-optional="example" data-foo data-bar="0">e</span>'
+    output, _ = fix_refs(source, url_map.__getitem__)
+    assert output == '<a class="autorefs autorefs-external" href="https://e.com" data-foo data-bar="0">e</a>'
