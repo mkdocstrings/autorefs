@@ -34,6 +34,7 @@ classifiers = [
 ]
 dependencies = [
     "Markdown>=3.3",
+    "markupsafe>=2.0.1",
     "mkdocs>=1.1",
 ]
 
@@ -90,6 +91,7 @@ tests = [
     "pytest-cov>=4.1",
     "pytest-randomly>=3.15",
     "pytest-xdist>=3.3",
+    "pymdown-extensions>=10.0",
 ]
 typing = [
     "mypy>=1.5",

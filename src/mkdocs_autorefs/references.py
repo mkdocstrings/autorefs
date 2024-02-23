@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING, Any, Callable, Match, Tuple
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
+import markupsafe
 from markdown.extensions import Extension
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
-from markdown.util import INLINE_PLACEHOLDER_RE
+from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 
 if TYPE_CHECKING:
     from markdown import Markdown
@@ -88,6 +89,8 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
             # https://github.com/Python-Markdown/markdown/blob/1858c1b601ead62ed49646ae0d99298f41b1a271/markdown/inlinepatterns.py#L78
             if INLINE_PLACEHOLDER_RE.fullmatch(identifier):
                 identifier = self.unescape(identifier)
+            if match := HTML_PLACEHOLDER_RE.fullmatch(identifier):
+                identifier = markupsafe.Markup(self.md.htmlStash.rawHtmlBlocks[int(match.group(1))]).striptags()
 
         end = m.end(0)
         return identifier, end, True
