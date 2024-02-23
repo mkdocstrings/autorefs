@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from textwrap import dedent
+from typing import Mapping
 
 import markdown
 import pytest
@@ -47,6 +48,7 @@ def run_references_test(
     output: str,
     unmapped: list[str] | None = None,
     from_url: str = "page.html",
+    extensions: Mapping = {},
 ) -> None:
     """Help running tests about references.
 
@@ -57,7 +59,7 @@ def run_references_test(
         unmapped: The expected unmapped list.
         from_url: The source page URL.
     """
-    md = markdown.Markdown(extensions=[AutorefsExtension()])
+    md = markdown.Markdown(extensions=[AutorefsExtension(), *extensions], extension_configs=extensions)
     content = md.convert(source)
 
     def url_mapper(identifier: str) -> str:
@@ -92,6 +94,26 @@ def test_reference_implicit_with_code() -> None:
         url_map={"Foo": "foo.html#Foo"},
         source="This [`Foo`][].",
         output='<p>This <a class="autorefs autorefs-internal" href="foo.html#Foo"><code>Foo</code></a>.</p>',
+    )
+
+
+def test_reference_implicit_with_code_inlinehilite_plain() -> None:
+    """Check implicit references (identifier in backticks, wrapped by inlinehilite)."""
+    run_references_test(
+        extensions={"pymdownx.inlinehilite": {}},
+        url_map={"pathlib.Path": "pathlib.html#Path"},
+        source="This [`pathlib.Path`][].",
+        output='<p>This <a class="autorefs autorefs-internal" href="pathlib.html#Path"><code>pathlib.Path</code></a>.</p>',
+    )
+
+
+def test_reference_implicit_with_code_inlinehilite_python() -> None:
+    """Check implicit references (identifier in backticks, syntax-highlighted by inlinehilite)."""
+    run_references_test(
+        extensions={"pymdownx.inlinehilite": {"style_plain_text": "python"}, "pymdownx.highlight": {}},
+        url_map={"pathlib.Path": "pathlib.html#Path"},
+        source="This [`pathlib.Path`][].",
+        output='<p>This <a class="autorefs autorefs-internal" href="pathlib.html#Path"><code class="highlight">pathlib.Path</code></a>.</p>',
     )
 
 
