@@ -233,7 +233,7 @@ def test_register_markdown_anchors() -> None:
     """Check that Markdown anchors are registered when enabled."""
     plugin = AutorefsPlugin()
     md = markdown.Markdown(extensions=["attr_list", "toc", AutorefsExtension(plugin)])
-    plugin.current_page = ""
+    plugin.current_page = "page"
     md.convert(
         dedent(
             """
@@ -253,12 +253,24 @@ def test_register_markdown_anchors() -> None:
             Text.
             [](){#alias4}
             ## Heading baz
+
+            [](){#alias5}
+            [](){#alias6}
+            Decoy.
+            ## Heading more
+
+            [](){#alias7}
             """,
         ),
     )
-    assert plugin._url_map["foo"] == "#heading-foo"
-    assert plugin._url_map["bar"] == "#bar"
-    assert plugin._url_map["alias1"] == "#heading-bar"
-    assert plugin._url_map["alias2"] == "#heading-bar"
-    assert plugin._url_map["alias3"] == "#alias3"
-    assert plugin._url_map["alias4"] == "#heading-baz"
+    assert plugin._url_map == {
+        "foo": "page#heading-foo",
+        "bar": "page#bar",
+        "alias1": "page#heading-bar",
+        "alias2": "page#heading-bar",
+        "alias3": "page#alias3",
+        "alias4": "page#heading-baz",
+        "alias5": "page#alias5",
+        "alias6": "page#alias6",
+        "alias7": "page#alias7",
+    }

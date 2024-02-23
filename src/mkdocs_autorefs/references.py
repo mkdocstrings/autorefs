@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from html import escape, unescape
-from itertools import zip_longest
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match, Tuple
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
@@ -215,40 +214,57 @@ class AnchorScannerTreeProcessor(Treeprocessor):
         """
         super().__init__(md)
         self.plugin = plugin
-        self._slug = md.treeprocessors["toc"].slugify
 
     def run(self, root: Element) -> None:  # noqa: D102
         if self.plugin.current_page is not None:
-            self._scan_anchors(root)
+            pending_anchors = _PendingAnchors(self.plugin, self.plugin.current_page)
+            self._scan_anchors(root, pending_anchors)
+            pending_anchors.flush()
 
-    def _scan_anchors(self, parent: Element) -> list[str]:
-        ids = []
-        # We iterate on pairs of elements, to check if the next element is a heading (alias feature).
-        for el, next_el in zip_longest(parent, parent[1:], fillvalue=Element("/")):
+    def _scan_anchors(self, parent: Element, pending_anchors: _PendingAnchors) -> None:
+        for el in parent:
             if el.tag == "a":
                 # We found an anchor. Record its id if it has one.
                 if anchor_id := el.get("id"):
-                    if el.tail and el.tail.strip():
-                        # If the anchor has a non-whitespace-only tail, it's not an alias:
-                        # register it immediately.
-                        self.plugin.register_anchor(self.plugin.current_page, anchor_id)  # type: ignore[arg-type]
-                    else:
-                        # Else record its id and continue.
-                        ids.append(anchor_id)
+                    pending_anchors.append(anchor_id)
+                # Non-whitespace text after the element interrupts the chain, aliases can't apply.
+                if el.tail and el.tail.strip():
+                    pending_anchors.flush()
+
             elif el.tag == "p":
-                if ids := self._scan_anchors(el):
-                    # Markdown anchors are always rendered as `a` tags within a `p` tag.
-                    # Headings therefore appear after the `p` tag. Here the current element
-                    # is a `p` tag and it contains at least one anchor with an id.
-                    # We can check if the next element is a heading, and use its id as href.
-                    href = (next_el.get("id") or self._slug(next_el.text or "")) if next_el.tag in self._htags else ""
-                    for anchor_id in ids:
-                        self.plugin.register_anchor(self.plugin.current_page, anchor_id, href)  # type: ignore[arg-type]
-                    ids.clear()
+                # A `p` tag is a no-op for our purposes, just recurse into it in the context
+                # of the current collection of anchors.
+                self._scan_anchors(el, pending_anchors)
+                # Non-whitespace text after the element interrupts the chain, aliases can't apply.
+                if el.tail and el.tail.strip():
+                    pending_anchors.flush()
+
+            elif el.tag in self._htags:
+                # If the element is a heading, that turns the pending anchors into aliases.
+                pending_anchors.flush(el.get("id"))
+
             else:
-                # Recurse into sub-elements.
-                ids = self._scan_anchors(el)
-        return ids
+                # But if it's some other interruption, flush anchors anyway as non-aliases.
+                pending_anchors.flush()
+                # Recurse into sub-elements, in a *separate* context.
+                self.run(el)
+
+
+class _PendingAnchors:
+    """A collection of HTML anchors that may or may not become aliased to an upcoming heading."""
+
+    def __init__(self, plugin: AutorefsPlugin, current_page: str):
+        self.plugin = plugin
+        self.current_page = current_page
+        self.anchors: list[str] = []
+
+    def append(self, anchor: str) -> None:
+        self.anchors.append(anchor)
+
+    def flush(self, alias_to: str | None = None) -> None:
+        for anchor in self.anchors:
+            self.plugin.register_anchor(self.current_page, anchor, alias_to)
+        self.anchors.clear()
 
 
 class AutorefsExtension(Extension):

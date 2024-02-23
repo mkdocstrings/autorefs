@@ -95,8 +95,7 @@ markdown_extensions:
     permalink: "¤"
 
 plugins:
-- autorefs:
-    scan_anchors: true
+- autorefs
 - search
 - markdown-exec
 - gen-files:

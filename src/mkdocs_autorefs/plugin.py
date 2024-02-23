@@ -19,8 +19,6 @@ from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
 
 from markdown.extensions.attr_list import AttrListExtension
-from mkdocs.config.base import Config
-from mkdocs.config.config_options import Type
 from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.plugins import BasePlugin
 from mkdocs.structure.pages import Page
@@ -41,14 +39,7 @@ except ImportError:
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 
-class AutorefsConfig(Config):
-    """Configuration options for the Autorefs plugin."""
-
-    scan_anchors = Type(bool, default=False)
-    """Whether to scan HTML pages for anchors defining references."""
-
-
-class AutorefsPlugin(BasePlugin[AutorefsConfig]):
+class AutorefsPlugin(BasePlugin):
     """An `mkdocs` plugin.
 
     This plugin defines the following event hooks:
