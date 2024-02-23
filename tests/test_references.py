@@ -262,7 +262,7 @@ def test_register_markdown_anchors() -> None:
             [](){#alias7}
             [decoy](){#alias8}
             [](){#alias9}
-            ## Heading more2
+            ## Heading more2 {#heading-custom2}
 
             [](){#alias10}
             """,
@@ -279,6 +279,33 @@ def test_register_markdown_anchors() -> None:
         "alias6": "page#alias6",
         "alias7": "page#alias7",
         "alias8": "page#alias8",
-        "alias9": "page#heading-more2",
+        "alias9": "page#heading-custom2",
         "alias10": "page#alias10",
+    }
+
+
+def test_register_markdown_anchors_with_admonition() -> None:
+    """Check that Markdown anchors are registered inside a nested admonition element."""
+    plugin = AutorefsPlugin()
+    md = markdown.Markdown(extensions=["attr_list", "toc", "admonition", AutorefsExtension(plugin)])
+    plugin.current_page = "page"
+    md.convert(
+        dedent(
+            """
+            [](){#alias1}
+            !!! note
+                ## Heading foo
+
+                [](){#alias2}
+                ## Heading bar
+
+                [](){#alias3}
+            ## Heading baz
+            """,
+        ),
+    )
+    assert plugin._url_map == {
+        "alias1": "page#alias1",
+        "alias2": "page#heading-bar",
+        "alias3": "page#alias3",
     }

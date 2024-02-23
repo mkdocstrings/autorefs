@@ -18,7 +18,6 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
 
-from markdown.extensions.attr_list import AttrListExtension
 from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.plugins import BasePlugin
 from mkdocs.structure.pages import Page
@@ -53,7 +52,6 @@ class AutorefsPlugin(BasePlugin):
     """
 
     scan_toc: bool = True
-    scan_anchors: bool = False
     current_page: str | None = None
 
     def __init__(self) -> None:
@@ -137,14 +135,7 @@ class AutorefsPlugin(BasePlugin):
             The modified config.
         """
         log.debug("Adding AutorefsExtension to the list")
-        for ext in config.markdown_extensions:
-            if ext == "attr_list" or isinstance(ext, AttrListExtension):
-                log.debug("Enabling Markdown anchors feature")
-                scan_anchors = True
-                break
-        else:
-            scan_anchors = False
-        config["markdown_extensions"].append(AutorefsExtension(plugin=self if scan_anchors else None))
+        config["markdown_extensions"].append(AutorefsExtension(self))
         return config
 
     def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002

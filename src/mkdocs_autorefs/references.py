@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from html import escape, unescape
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match, Tuple
@@ -18,6 +19,14 @@ if TYPE_CHECKING:
     from markdown import Markdown
 
     from mkdocs_autorefs.plugin import AutorefsPlugin
+
+try:
+    from mkdocs.plugins import get_plugin_logger
+
+    log = get_plugin_logger(__name__)
+except ImportError:
+    # TODO: remove once support for MkDocs <1.5 is dropped
+    log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 AUTO_REF_RE = re.compile(
     r"<span data-(?P<kind>autorefs-identifier|autorefs-optional|autorefs-optional-hover)="
@@ -300,7 +309,8 @@ class AutorefsExtension(Extension):
             "mkdocs-autorefs",
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
-        if self.plugin:
+        if self.plugin is not None and self.plugin.scan_toc and "attr_list" in md.treeprocessors:
+            log.debug("Enabling Markdown anchors feature")
             md.treeprocessors.register(
                 AnchorScannerTreeProcessor(self.plugin, md),
                 "mkdocs-autorefs-anchors-scanner",
