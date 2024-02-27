@@ -331,3 +331,11 @@ def test_register_markdown_anchors_with_admonition() -> None:
         "alias2": "page#heading-bar",
         "alias3": "page#alias3",
     }
+
+
+def test_keep_data_attributes() -> None:
+    """Keep HTML data attributes from autorefs spans."""
+    url_map = {"example": "https://e.com"}
+    source = '<span data-autorefs-optional="example" class="hi ho" data-foo data-bar="0">e</span>'
+    output, _ = fix_refs(source, url_map.__getitem__)
+    assert output == '<a class="autorefs autorefs-external hi ho" href="https://e.com" data-foo data-bar="0">e</a>'

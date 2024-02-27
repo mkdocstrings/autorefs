@@ -59,7 +59,7 @@ class AutorefsPlugin(BasePlugin):
         super().__init__()
         self._url_map: dict[str, str] = {}
         self._abs_url_map: dict[str, str] = {}
-        self.get_fallback_anchor: Callable[[str], str | None] | None = None
+        self.get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
 
     def register_anchor(self, page: str, identifier: str, anchor: str | None = None) -> None:
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
