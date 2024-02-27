@@ -95,6 +95,7 @@ markdown_extensions:
     permalink: "¤"
 
 plugins:
+- autorefs
 - search
 - markdown-exec
 - gen-files:
@@ -109,6 +110,7 @@ plugins:
         import:
         - https://docs.python.org/3/objects.inv
         - https://www.mkdocs.org/objects.inv
+        - https://python-markdown.github.io/objects.inv
         paths: [src]
         options:
           docstring_options:

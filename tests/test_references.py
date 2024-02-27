@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from textwrap import dedent
 from typing import Mapping
 
 import markdown
 import pytest
 
+from mkdocs_autorefs.plugin import AutorefsPlugin
 from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
 
@@ -247,6 +249,88 @@ def test_external_references() -> None:
     output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '<a class="autorefs autorefs-external" href="https://example.com">example</a>'
     assert unmapped == []
+
+
+def test_register_markdown_anchors() -> None:
+    """Check that Markdown anchors are registered when enabled."""
+    plugin = AutorefsPlugin()
+    md = markdown.Markdown(extensions=["attr_list", "toc", AutorefsExtension(plugin)])
+    plugin.current_page = "page"
+    md.convert(
+        dedent(
+            """
+            [](){#foo}
+            ## Heading foo
+
+            Paragraph 1.
+
+            [](){#bar}
+            Paragraph 2.
+
+            [](){#alias1}
+            [](){#alias2}
+            ## Heading bar
+
+            [](){#alias3}
+            Text.
+            [](){#alias4}
+            ## Heading baz
+
+            [](){#alias5}
+            [](){#alias6}
+            Decoy.
+            ## Heading more1
+
+            [](){#alias7}
+            [decoy](){#alias8}
+            [](){#alias9}
+            ## Heading more2 {#heading-custom2}
+
+            [](){#alias10}
+            """,
+        ),
+    )
+    assert plugin._url_map == {
+        "foo": "page#heading-foo",
+        "bar": "page#bar",
+        "alias1": "page#heading-bar",
+        "alias2": "page#heading-bar",
+        "alias3": "page#alias3",
+        "alias4": "page#heading-baz",
+        "alias5": "page#alias5",
+        "alias6": "page#alias6",
+        "alias7": "page#alias7",
+        "alias8": "page#alias8",
+        "alias9": "page#heading-custom2",
+        "alias10": "page#alias10",
+    }
+
+
+def test_register_markdown_anchors_with_admonition() -> None:
+    """Check that Markdown anchors are registered inside a nested admonition element."""
+    plugin = AutorefsPlugin()
+    md = markdown.Markdown(extensions=["attr_list", "toc", "admonition", AutorefsExtension(plugin)])
+    plugin.current_page = "page"
+    md.convert(
+        dedent(
+            """
+            [](){#alias1}
+            !!! note
+                ## Heading foo
+
+                [](){#alias2}
+                ## Heading bar
+
+                [](){#alias3}
+            ## Heading baz
+            """,
+        ),
+    )
+    assert plugin._url_map == {
+        "alias1": "page#alias1",
+        "alias2": "page#heading-bar",
+        "alias3": "page#alias3",
+    }
 
 
 def test_keep_data_attributes() -> None:

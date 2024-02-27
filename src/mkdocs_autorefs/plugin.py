@@ -18,7 +18,9 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
 
+from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.plugins import BasePlugin
+from mkdocs.structure.pages import Page
 
 from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
@@ -59,14 +61,14 @@ class AutorefsPlugin(BasePlugin):
         self._abs_url_map: dict[str, str] = {}
         self.get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
 
-    def register_anchor(self, page: str, identifier: str) -> None:
+    def register_anchor(self, page: str, identifier: str, anchor: str | None = None) -> None:
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
 
         Arguments:
             page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
             identifier: The HTML anchor (without '#') as a string.
         """
-        self._url_map[identifier] = f"{page}#{identifier}"
+        self._url_map[identifier] = f"{page}#{anchor or identifier}"
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
@@ -133,7 +135,7 @@ class AutorefsPlugin(BasePlugin):
             The modified config.
         """
         log.debug("Adding AutorefsExtension to the list")
-        config["markdown_extensions"].append(AutorefsExtension())
+        config["markdown_extensions"].append(AutorefsExtension(self))
         return config
 
     def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
@@ -145,7 +147,8 @@ class AutorefsPlugin(BasePlugin):
             kwargs: Additional arguments passed by MkDocs.
 
         Returns:
-            The same Markdown. We only use this hook to map anchors to URLs.
+            The same Markdown. We only use this hook to keep a reference to the current page URL,
+                used during Markdown conversion by the anchor scanner tree processor.
         """
         self.current_page = page.url
         return markdown

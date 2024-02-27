@@ -2,19 +2,32 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from html import escape, unescape
-from typing import TYPE_CHECKING, Any, Callable, Match
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
 import markupsafe
+from markdown.core import Markdown
 from markdown.extensions import Extension
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
+from markdown.treeprocessors import Treeprocessor
 from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 
 if TYPE_CHECKING:
     from markdown import Markdown
+
+    from mkdocs_autorefs.plugin import AutorefsPlugin
+
+try:
+    from mkdocs.plugins import get_plugin_logger
+
+    log = get_plugin_logger(__name__)
+except ImportError:
+    # TODO: remove once support for MkDocs <1.5 is dropped
+    log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 _ATTR_VALUE = r'"[^"<>]+"|[^"<> ]+'  # Possibly with double quotes around
 AUTO_REF_RE = re.compile(
@@ -208,13 +221,96 @@ def fix_refs(html: str, url_mapper: Callable[[str], str]) -> tuple[str, list[str
     return html, unmapped
 
 
+class AnchorScannerTreeProcessor(Treeprocessor):
+    """Tree processor to scan and register HTML anchors."""
+
+    _htags: ClassVar[set[str]] = {"h1", "h2", "h3", "h4", "h5", "h6"}
+
+    def __init__(self, plugin: AutorefsPlugin, md: Markdown | None = None) -> None:
+        """Initialize the tree processor.
+
+        Parameters:
+            plugin: A reference to the autorefs plugin, to use its `register_anchor` method.
+        """
+        super().__init__(md)
+        self.plugin = plugin
+
+    def run(self, root: Element) -> None:  # noqa: D102
+        if self.plugin.current_page is not None:
+            pending_anchors = _PendingAnchors(self.plugin, self.plugin.current_page)
+            self._scan_anchors(root, pending_anchors)
+            pending_anchors.flush()
+
+    def _scan_anchors(self, parent: Element, pending_anchors: _PendingAnchors) -> None:
+        for el in parent:
+            if el.tag == "a":
+                # We found an anchor. Record its id if it has one.
+                if anchor_id := el.get("id"):
+                    pending_anchors.append(anchor_id)
+                # If the element has text or a link, it's not an alias.
+                # Non-whitespace text after the element interrupts the chain, aliases can't apply.
+                if el.text or el.get("href") or (el.tail and el.tail.strip()):
+                    pending_anchors.flush()
+
+            elif el.tag == "p":
+                # A `p` tag is a no-op for our purposes, just recurse into it in the context
+                # of the current collection of anchors.
+                self._scan_anchors(el, pending_anchors)
+                # Non-whitespace text after the element interrupts the chain, aliases can't apply.
+                if el.tail and el.tail.strip():
+                    pending_anchors.flush()
+
+            elif el.tag in self._htags:
+                # If the element is a heading, that turns the pending anchors into aliases.
+                pending_anchors.flush(el.get("id"))
+
+            else:
+                # But if it's some other interruption, flush anchors anyway as non-aliases.
+                pending_anchors.flush()
+                # Recurse into sub-elements, in a *separate* context.
+                self.run(el)
+
+
+class _PendingAnchors:
+    """A collection of HTML anchors that may or may not become aliased to an upcoming heading."""
+
+    def __init__(self, plugin: AutorefsPlugin, current_page: str):
+        self.plugin = plugin
+        self.current_page = current_page
+        self.anchors: list[str] = []
+
+    def append(self, anchor: str) -> None:
+        self.anchors.append(anchor)
+
+    def flush(self, alias_to: str | None = None) -> None:
+        for anchor in self.anchors:
+            self.plugin.register_anchor(self.current_page, anchor, alias_to)
+        self.anchors.clear()
+
+
 class AutorefsExtension(Extension):
     """Extension that inserts auto-references in Markdown."""
+
+    def __init__(
+        self,
+        plugin: AutorefsPlugin | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize the Markdown extension.
+
+        Parameters:
+            plugin: An optional reference to the autorefs plugin (to pass it to the anchor scanner tree processor).
+            **kwargs: Keyword arguments passed to the [base constructor][markdown.extensions.Extension].
+        """
+        super().__init__(**kwargs)
+        self.plugin = plugin
 
     def extendMarkdown(self, md: Markdown) -> None:  # noqa: N802 (casing: parent method's name)
         """Register the extension.
 
         Add an instance of our [`AutoRefInlineProcessor`][mkdocs_autorefs.references.AutoRefInlineProcessor] to the Markdown parser.
+        Also optionally add an instance of our [`AnchorScannerTreeProcessor`][mkdocs_autorefs.references.AnchorScannerTreeProcessor]
+        to the Markdown parser if a reference to the autorefs plugin was passed to this extension.
 
         Arguments:
             md: A `markdown.Markdown` instance.
@@ -224,3 +320,10 @@ class AutorefsExtension(Extension):
             "mkdocs-autorefs",
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
+        if self.plugin is not None and self.plugin.scan_toc and "attr_list" in md.treeprocessors:
+            log.debug("Enabling Markdown anchors feature")
+            md.treeprocessors.register(
+                AnchorScannerTreeProcessor(self.plugin, md),
+                "mkdocs-autorefs-anchors-scanner",
+                priority=0,
+            )
