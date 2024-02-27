@@ -5,6 +5,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.0.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.0.0) - 2024-02-27
+
+<small>[Compare with 0.5.0](https://github.com/mkdocstrings/autorefs/compare/0.5.0...1.0.0)</small>
+
+### Features
+
+- Add Markdown anchors and aliases ([a215a97](https://github.com/mkdocstrings/autorefs/commit/a215a97a057b54e11ebec8865c64e93429edde63) by Timothée Mazzucotelli). [Replaces-PR-#20](https://github.com/mkdocstrings/autorefs/pull/20), [Related-to-PR-#25](https://github.com/mkdocstrings/autorefs/pull/25), [Related-to-issue-#35](https://github.com/mkdocstrings/autorefs/issues/35), Co-authored-by: Oleh Prypin <oleh@pryp.in>, Co-authored-by: tvdboom <m.524687@gmail.com>
+- Preserve HTML data attributes (from spans to anchors) ([0c1781d](https://github.com/mkdocstrings/autorefs/commit/0c1781d7e3d6bffd55802868802bcd1ec9e8bbc7) by Timothée Mazzucotelli). [Issue-#41](https://github.com/mkdocstrings/autorefs/issues/41), [PR-#42](https://github.com/mkdocstrings/autorefs/pull/42), Co-authored-by: Oleh Prypin <oleh@pryp.in>
+- Support ``[`identifier`][]`` with pymdownx.inlinehilite enabled ([e7f2228](https://github.com/mkdocstrings/autorefs/commit/e7f222894c70627c70e6a14e453a10a81e3f8957) by Oleh Prypin). [Issue-#34](https://github.com/mkdocstrings/autorefs/issues/34), [PR-#40](https://github.com/mkdocstrings/autorefs/pull/40), Co-authored-by: Timothée Mazzucotelli <dev@pawamoy.fr>
+
+### Bug Fixes
+
+- Recognize links with multi-line text ([225a6f2](https://github.com/mkdocstrings/autorefs/commit/225a6f275069bcdfb3411e80d4a7fa645b857b88) by Oleh Prypin). [Issue #31](https://github.com/mkdocstrings/autorefs/issues/31), [PR #32](https://github.com/mkdocstrings/autorefs/pull/32)
+
 ## [0.5.0](https://github.com/mkdocstrings/autorefs/releases/tag/0.5.0) - 2023-08-02
 
 <small>[Compare with 0.4.1](https://github.com/mkdocstrings/autorefs/compare/0.4.1...0.5.0)</small>
