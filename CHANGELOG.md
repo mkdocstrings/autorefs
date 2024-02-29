@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.0.1](https://github.com/mkdocstrings/autorefs/releases/tag/1.0.1) - 2024-02-29
+
+<small>[Compare with 1.0.0](https://github.com/mkdocstrings/autorefs/compare/1.0.0...1.0.1)</small>
+
+### Bug Fixes
+
+- Don't import `MkDocsConfig` (does not exist on MkDocs 1.3-) ([9c15664](https://github.com/mkdocstrings/autorefs/commit/9c156643ead1dc24f08b8047bd5b2fcd97662783) by Timothée Mazzucotelli).
+
 ## [1.0.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.0.0) - 2024-02-27
 
 <small>[Compare with 0.5.0](https://github.com/mkdocstrings/autorefs/compare/0.5.0...1.0.0)</small>
