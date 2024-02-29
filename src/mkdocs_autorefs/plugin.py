@@ -18,7 +18,6 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
 
-from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.plugins import BasePlugin
 from mkdocs.structure.pages import Page
 
