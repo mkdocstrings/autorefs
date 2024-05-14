@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import logging
 import re
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from html import escape, unescape
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
@@ -40,10 +43,53 @@ in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page]
 """
 
 
+class AutoRefHookInterface(ABC):
+    """An interface for hooking into how AutoRef handles inline references."""
+
+    @dataclass
+    class Context:
+        domain: str
+        role: str
+        origin: str
+        filepath: str | Path
+        lineno: int
+
+        def as_dict(self) -> dict[str, str]:
+            return {
+                "data-autorefs-domain": self.domain,
+                "data-autorefs-role": self.role,
+                "data-autorefs-origin": self.origin,
+                "data-autorefs-filepath": str(self.filepath),
+                "data-autorefs-lineno": str(self.lineno),
+            }
+
+    @abstractmethod
+    def expand_identifier(self, identifier: str) -> str:
+        """Expand an identifier in a given context.
+
+        Parameters:
+            identifier: The identifier to expand.
+
+        Returns:
+            The expanded identifier.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_context(self) -> AutoRefHookInterface.Context:
+        """Get the current context.
+
+        Returns:
+            The current context.
+        """
+        raise NotImplementedError
+
+
 class AutoRefInlineProcessor(ReferenceInlineProcessor):
     """A Markdown extension."""
 
     name: str = "mkdocs-autorefs"
+    hook: AutoRefHookInterface | None = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D107
         super().__init__(REFERENCE_RE, *args, **kwargs)
@@ -127,6 +173,9 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
             A new element.
         """
         el = Element("span")
+        if self.hook:
+            identifier = self.hook.expand_identifier(identifier)
+            el.attrib.update(self.hook.get_context().as_dict())
         el.set("data-autorefs-identifier", identifier)
         el.text = text
         return el
