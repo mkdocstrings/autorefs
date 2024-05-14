@@ -43,6 +43,8 @@ in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page]
 class AutoRefInlineProcessor(ReferenceInlineProcessor):
     """A Markdown extension."""
 
+    name: str = "mkdocs-autorefs"
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D107
         super().__init__(REFERENCE_RE, *args, **kwargs)
 
@@ -224,6 +226,7 @@ def fix_refs(html: str, url_mapper: Callable[[str], str]) -> tuple[str, list[str
 class AnchorScannerTreeProcessor(Treeprocessor):
     """Tree processor to scan and register HTML anchors."""
 
+    name: str = "mkdocs-autorefs-anchors-scanner"
     _htags: ClassVar[set[str]] = {"h1", "h2", "h3", "h4", "h5", "h6"}
 
     def __init__(self, plugin: AutorefsPlugin, md: Markdown | None = None) -> None:
@@ -317,13 +320,13 @@ class AutorefsExtension(Extension):
         """
         md.inlinePatterns.register(
             AutoRefInlineProcessor(md),
-            "mkdocs-autorefs",
+            AutoRefInlineProcessor.name,
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
         if self.plugin is not None and self.plugin.scan_toc and "attr_list" in md.treeprocessors:
             log.debug("Enabling Markdown anchors feature")
             md.treeprocessors.register(
                 AnchorScannerTreeProcessor(self.plugin, md),
-                "mkdocs-autorefs-anchors-scanner",
+                AnchorScannerTreeProcessor.name,
                 priority=0,
             )
