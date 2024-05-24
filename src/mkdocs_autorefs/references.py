@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import re
 import warnings
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from html import escape, unescape
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match
@@ -19,6 +21,8 @@ from markdown.treeprocessors import Treeprocessor
 from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from markdown import Markdown
 
     from mkdocs_autorefs.plugin import AutorefsPlugin
@@ -55,10 +59,56 @@ in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page]
 """
 
 
+class AutorefsHookInterface(ABC):
+    """An interface for hooking into how AutoRef handles inline references."""
+
+    @dataclass
+    class Context:
+        """The context around an auto-reference."""
+
+        domain: str
+        role: str
+        origin: str
+        filepath: str | Path
+        lineno: int
+
+        def as_dict(self) -> dict[str, str]:
+            """Convert the context to a dictionary of HTML attributes."""
+            return {
+                "domain": self.domain,
+                "role": self.role,
+                "origin": self.origin,
+                "filepath": str(self.filepath),
+                "lineno": str(self.lineno),
+            }
+
+    @abstractmethod
+    def expand_identifier(self, identifier: str) -> str:
+        """Expand an identifier in a given context.
+
+        Parameters:
+            identifier: The identifier to expand.
+
+        Returns:
+            The expanded identifier.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_context(self) -> AutorefsHookInterface.Context:
+        """Get the current context.
+
+        Returns:
+            The current context.
+        """
+        raise NotImplementedError
+
+
 class AutorefsInlineProcessor(ReferenceInlineProcessor):
     """A Markdown extension to handle inline references."""
 
     name: str = "mkdocs-autorefs"
+    hook: AutorefsHookInterface | None = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D107
         super().__init__(REFERENCE_RE, *args, **kwargs)
@@ -142,6 +192,9 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
             A new element.
         """
         el = Element("autoref")
+        if self.hook:
+            identifier = self.hook.expand_identifier(identifier)
+            el.attrib.update(self.hook.get_context().as_dict())
         el.set("identifier", identifier)
         el.text = text
         return el
