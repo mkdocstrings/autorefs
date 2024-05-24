@@ -52,6 +52,7 @@ class AutorefsPlugin(BasePlugin):
 
     scan_toc: bool = True
     current_page: str | None = None
+    legacy_refs: bool = True
 
     def __init__(self) -> None:
         """Initialize the object."""
@@ -211,7 +212,7 @@ class AutorefsPlugin(BasePlugin):
         log.debug(f"Fixing references in page {page.file.src_path}")
 
         url_mapper = functools.partial(self.get_item_url, from_url=page.url, fallback=self.get_fallback_anchor)
-        fixed_output, unmapped = fix_refs(output, url_mapper)
+        fixed_output, unmapped = fix_refs(output, url_mapper, _legacy_refs=self.legacy_refs)
 
         if unmapped and log.isEnabledFor(logging.WARNING):
             for ref in unmapped:

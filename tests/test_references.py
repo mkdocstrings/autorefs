@@ -212,7 +212,7 @@ def test_ignore_reference_with_special_char() -> None:
     )
 
 
-def test_custom_required_reference() -> None:
+def test_legacy_custom_required_reference() -> None:
     """Check that external HTML-based references are expanded or reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = "<span data-autorefs-identifier=bar>foo</span> <span data-autorefs-identifier=ok>ok</span>"
@@ -221,7 +221,16 @@ def test_custom_required_reference() -> None:
     assert unmapped == ["bar"]
 
 
-def test_custom_optional_reference() -> None:
+def test_custom_required_reference() -> None:
+    """Check that external HTML-based references are expanded or reported missing."""
+    url_map = {"ok": "ok.html#ok"}
+    source = "<autoref identifier=bar>foo</autoref> <autoref identifier=ok>ok</autoref>"
+    output, unmapped = fix_refs(source, url_map.__getitem__)
+    assert output == '[foo][bar] <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
+    assert unmapped == ["bar"]
+
+
+def test_legacy_custom_optional_reference() -> None:
     """Check that optional HTML-based references are expanded and never reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional="bar">foo</span> <span data-autorefs-optional=ok>ok</span>'
@@ -230,7 +239,16 @@ def test_custom_optional_reference() -> None:
     assert unmapped == []
 
 
-def test_custom_optional_hover_reference() -> None:
+def test_custom_optional_reference() -> None:
+    """Check that optional HTML-based references are expanded and never reported missing."""
+    url_map = {"ok": "ok.html#ok"}
+    source = '<autoref optional identifier="bar">foo</autoref> <autoref identifier=ok optional>ok</autoref>'
+    output, unmapped = fix_refs(source, url_map.__getitem__)
+    assert output == 'foo <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
+    assert unmapped == []
+
+
+def test_legacy_custom_optional_hover_reference() -> None:
     """Check that optional-hover HTML-based references are expanded and never reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional-hover="bar">foo</span> <span data-autorefs-optional-hover=ok>ok</span>'
@@ -242,10 +260,31 @@ def test_custom_optional_hover_reference() -> None:
     assert unmapped == []
 
 
-def test_external_references() -> None:
+def test_custom_optional_hover_reference() -> None:
+    """Check that optional-hover HTML-based references are expanded and never reported missing."""
+    url_map = {"ok": "ok.html#ok"}
+    source = '<autoref optional hover identifier="bar">foo</autoref> <autoref optional identifier=ok hover>ok</autoref>'
+    output, unmapped = fix_refs(source, url_map.__getitem__)
+    assert (
+        output
+        == '<span title="bar">foo</span> <a class="autorefs autorefs-internal" title="ok" href="ok.html#ok">ok</a>'
+    )
+    assert unmapped == []
+
+
+def test_legacy_external_references() -> None:
     """Check that external references are marked as such."""
     url_map = {"example": "https://example.com"}
     source = '<span data-autorefs-optional="example">example</span>'
+    output, unmapped = fix_refs(source, url_map.__getitem__)
+    assert output == '<a class="autorefs autorefs-external" href="https://example.com">example</a>'
+    assert unmapped == []
+
+
+def test_external_references() -> None:
+    """Check that external references are marked as such."""
+    url_map = {"example": "https://example.com"}
+    source = '<autoref optional identifier="example">example</autoref>'
     output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '<a class="autorefs autorefs-external" href="https://example.com">example</a>'
     assert unmapped == []
@@ -333,9 +372,17 @@ def test_register_markdown_anchors_with_admonition() -> None:
     }
 
 
-def test_keep_data_attributes() -> None:
+def test_legacy_keep_data_attributes() -> None:
     """Keep HTML data attributes from autorefs spans."""
     url_map = {"example": "https://e.com"}
     source = '<span data-autorefs-optional="example" class="hi ho" data-foo data-bar="0">e</span>'
+    output, _ = fix_refs(source, url_map.__getitem__)
+    assert output == '<a class="autorefs autorefs-external hi ho" href="https://e.com" data-foo data-bar="0">e</a>'
+
+
+def test_keep_data_attributes() -> None:
+    """Keep HTML data attributes from autorefs spans."""
+    url_map = {"example": "https://e.com"}
+    source = '<autoref optional identifier="example" class="hi ho" data-foo data-bar="0">e</autoref>'
     output, _ = fix_refs(source, url_map.__getitem__)
     assert output == '<a class="autorefs autorefs-external hi ho" href="https://e.com" data-foo data-bar="0">e</a>'

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 import re
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from html import escape, unescape
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match
 from urllib.parse import urlsplit
@@ -32,13 +34,26 @@ except ImportError:
     # TODO: remove once support for MkDocs <1.5 is dropped
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
+
+def __getattr__(name: str) -> Any:
+    if name == "AutoRefInlineProcessor":
+        warnings.warn("AutoRefInlineProcessor was renamed AutorefsInlineProcessor", DeprecationWarning, stacklevel=2)
+        return AutorefsInlineProcessor
+    raise AttributeError(f"module 'mkdocs_autorefs.references' has no attribute {name}")
+
+
 _ATTR_VALUE = r'"[^"<>]+"|[^"<> ]+'  # Possibly with double quotes around
 AUTO_REF_RE = re.compile(
     rf"<span data-(?P<kind>autorefs-(?:identifier|optional|optional-hover))=(?P<identifier>{_ATTR_VALUE})"
     rf"(?: class=(?P<class>{_ATTR_VALUE}))?(?P<attrs> [^<>]+)?>(?P<title>.*?)</span>",
     flags=re.DOTALL,
 )
-"""A regular expression to match mkdocs-autorefs' special reference markers
+"""Deprecated. Use [`AUTOREF_RE`][mkdocs_autorefs.references.AUTOREF_RE] instead."""
+
+AUTOREF_RE = re.compile(r"<autoref (?P<attrs>.*?)>(?P<title>.*?)</autoref>", flags=re.DOTALL)
+"""The autoref HTML tag regular expression.
+
+A regular expression to match mkdocs-autorefs' special reference markers
 in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page].
 """
 
@@ -85,8 +100,8 @@ class AutoRefHookInterface(ABC):
         raise NotImplementedError
 
 
-class AutoRefInlineProcessor(ReferenceInlineProcessor):
-    """A Markdown extension."""
+class AutorefsInlineProcessor(ReferenceInlineProcessor):
+    """A Markdown extension to handle inline references."""
 
     name: str = "mkdocs-autorefs"
     hook: AutoRefHookInterface | None = None
@@ -172,11 +187,11 @@ class AutoRefInlineProcessor(ReferenceInlineProcessor):
         Returns:
             A new element.
         """
-        el = Element("span")
+        el = Element("autoref")
         if self.hook:
             identifier = self.hook.expand_identifier(identifier)
             el.attrib.update(self.hook.get_context().as_dict())
-        el.set("data-autorefs-identifier", identifier)
+        el.set("identifier", identifier)
         el.text = text
         return el
 
@@ -207,7 +222,7 @@ def relative_url(url_a: str, url_b: str) -> str:
     return f"{relative}#{anchor}"
 
 
-def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
+def _legacy_fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
     In our context, we match Markdown references and replace them with HTML links.
@@ -256,7 +271,84 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
     return inner
 
 
-def fix_refs(html: str, url_mapper: Callable[[str], str]) -> tuple[str, list[str]]:
+class _AutorefsAttrs(dict):
+    _handled_attrs: ClassVar[set[str]] = {"identifier", "optional", "hover", "class"}
+
+    @property
+    def remaining(self) -> str:
+        return " ".join(k if v is None else f'{k}="{v}"' for k, v in self.items() if k not in self._handled_attrs)
+
+
+class _HTMLAttrsParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.attrs = {}
+
+    def parse(self, html: str) -> _AutorefsAttrs:
+        self.attrs.clear()
+        self.feed(html)
+        return _AutorefsAttrs(self.attrs)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:  # noqa: ARG002
+        self.attrs.update(attrs)
+
+
+_html_attrs_parser = _HTMLAttrsParser()
+
+
+def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
+    """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
+
+    In our context, we match Markdown references and replace them with HTML links.
+
+    When the matched reference's identifier was not mapped to an URL, we append the identifier to the outer
+    `unmapped` list. It generally means the user is trying to cross-reference an object that was not collected
+    and rendered, making it impossible to link to it. We catch this exception in the caller to issue a warning.
+
+    Arguments:
+        url_mapper: A callable that gets an object's site URL by its identifier,
+            such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
+        unmapped: A list to store unmapped identifiers.
+
+    Returns:
+        The actual function accepting a [`Match` object](https://docs.python.org/3/library/re.html#match-objects)
+        and returning the replacement strings.
+    """
+
+    def inner(match: Match) -> str:
+        title = match["title"]
+        attrs = _html_attrs_parser.parse(f"<a {match['attrs']}>")
+        identifier: str = attrs["identifier"]
+        optional = "optional" in attrs
+        hover = "hover" in attrs
+
+        try:
+            url = url_mapper(unescape(identifier))
+        except KeyError:
+            if optional:
+                if hover:
+                    return f'<span title="{identifier}">{title}</span>'
+                return title
+            unmapped.append(identifier)
+            if title == identifier:
+                return f"[{identifier}][]"
+            return f"[{title}][{identifier}]"
+
+        parsed = urlsplit(url)
+        external = parsed.scheme or parsed.netloc
+        classes = (attrs.get("class") or "").strip().split()
+        classes = ["autorefs", "autorefs-external" if external else "autorefs-internal", *classes]
+        class_attr = " ".join(classes)
+        if remaining := attrs.remaining:
+            remaining = f" {remaining}"
+        if optional and hover:
+            return f'<a class="{class_attr}" title="{identifier}" href="{escape(url)}"{remaining}>{title}</a>'
+        return f'<a class="{class_attr}" href="{escape(url)}"{remaining}>{title}</a>'
+
+    return inner
+
+
+def fix_refs(html: str, url_mapper: Callable[[str], str], *, _legacy_refs: bool = True) -> tuple[str, list[str]]:
     """Fix all references in the given HTML text.
 
     Arguments:
@@ -268,7 +360,9 @@ def fix_refs(html: str, url_mapper: Callable[[str], str]) -> tuple[str, list[str
         The fixed HTML.
     """
     unmapped: list[str] = []
-    html = AUTO_REF_RE.sub(fix_ref(url_mapper, unmapped), html)
+    html = AUTOREF_RE.sub(fix_ref(url_mapper, unmapped), html)
+    if _legacy_refs:
+        html = AUTO_REF_RE.sub(_legacy_fix_ref(url_mapper, unmapped), html)
     return html, unmapped
 
 
@@ -341,7 +435,13 @@ class _PendingAnchors:
 
 
 class AutorefsExtension(Extension):
-    """Extension that inserts auto-references in Markdown."""
+    """Markdown extension that transforms unresolved references into auto-references.
+
+    Auto-references are then resolved later by the MkDocs plugin.
+
+    This extension also scans Markdown anchors (`[](){#some-id}`)
+    to register them with the MkDocs plugin.
+    """
 
     def __init__(
         self,
@@ -360,7 +460,7 @@ class AutorefsExtension(Extension):
     def extendMarkdown(self, md: Markdown) -> None:  # noqa: N802 (casing: parent method's name)
         """Register the extension.
 
-        Add an instance of our [`AutoRefInlineProcessor`][mkdocs_autorefs.references.AutoRefInlineProcessor] to the Markdown parser.
+        Add an instance of our [`AutorefsInlineProcessor`][mkdocs_autorefs.references.AutorefsInlineProcessor] to the Markdown parser.
         Also optionally add an instance of our [`AnchorScannerTreeProcessor`][mkdocs_autorefs.references.AnchorScannerTreeProcessor]
         to the Markdown parser if a reference to the autorefs plugin was passed to this extension.
 
@@ -368,8 +468,8 @@ class AutorefsExtension(Extension):
             md: A `markdown.Markdown` instance.
         """
         md.inlinePatterns.register(
-            AutoRefInlineProcessor(md),
-            AutoRefInlineProcessor.name,
+            AutorefsInlineProcessor(md),
+            AutorefsInlineProcessor.name,
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
         if self.plugin is not None and self.plugin.scan_toc and "attr_list" in md.treeprocessors:
