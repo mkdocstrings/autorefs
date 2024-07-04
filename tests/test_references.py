@@ -347,7 +347,7 @@ def test_register_markdown_anchors() -> None:
         "alias8": ["page#alias8"],
         "alias9": ["page#heading-custom2"],
         "alias10": ["page#alias10"],
-        "aliasSame": ["page#same-heading-1", "page#same-heading-2"]
+        "aliasSame": ["page#same-heading-1", "page#same-heading-2"],
     }
 
 
