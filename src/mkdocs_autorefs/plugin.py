@@ -57,7 +57,7 @@ class AutorefsPlugin(BasePlugin):
     def __init__(self) -> None:
         """Initialize the object."""
         super().__init__()
-        self._url_map: dict[str, str] = {}
+        self._url_map: dict[str, list[str]] = {}
         self._abs_url_map: dict[str, str] = {}
         self.get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
 
@@ -68,7 +68,12 @@ class AutorefsPlugin(BasePlugin):
             page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
             identifier: The HTML anchor (without '#') as a string.
         """
-        self._url_map[identifier] = f"{page}#{anchor or identifier}"
+        page_anchor = f"{page}#{anchor or identifier}"
+        if identifier in self._url_map:
+            if page_anchor not in self._url_map[identifier]:
+                self._url_map[identifier].append(page_anchor)
+        else:
+            self._url_map[identifier] = [page_anchor]
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
@@ -85,7 +90,11 @@ class AutorefsPlugin(BasePlugin):
         fallback: Callable[[str], Sequence[str]] | None = None,
     ) -> str:
         try:
-            return self._url_map[identifier]
+            if len(self._url_map[identifier]) > 1:
+                log.warning(
+                    f"Multiple urls found for '{identifier}': {self._url_map[identifier]}. Please specify a custom unique identifier.",
+                )
+            return self._url_map[identifier][0]
         except KeyError:
             if identifier in self._abs_url_map:
                 return self._abs_url_map[identifier]
@@ -94,7 +103,7 @@ class AutorefsPlugin(BasePlugin):
                 for new_identifier in new_identifiers:
                     with contextlib.suppress(KeyError):
                         url = self._get_item_url(new_identifier)
-                        self._url_map[identifier] = url
+                        self._url_map[identifier] = [url]
                         return url
             raise
 
