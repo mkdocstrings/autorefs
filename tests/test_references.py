@@ -113,7 +113,7 @@ def test_reference_implicit_with_code_inlinehilite_python() -> None:
         extensions={"pymdownx.inlinehilite": {"style_plain_text": "python"}, "pymdownx.highlight": {}},
         url_map={"pathlib.Path": "pathlib.html#Path"},
         source="This [`pathlib.Path`][].",
-        output='<p>This <a class="autorefs autorefs-internal" href="pathlib.html#Path"><code class="language-python highlight">pathlib.Path</code></a>.</p>',
+        output='<p>This <a class="autorefs autorefs-internal" href="pathlib.html#Path"><code class="highlight">pathlib.Path</code></a>.</p>',
     )
 
 
@@ -325,12 +325,12 @@ def test_register_markdown_anchors() -> None:
             [](){#alias9}
             ## Heading more2 {#heading-custom2}
 
-            [](){#alias10}
-
             [](){#aliasSame}
             ## Same heading 1
             [](){#aliasSame}
             ## Same heading 2
+
+            [](){#alias10}
             """,
         ),
     )
