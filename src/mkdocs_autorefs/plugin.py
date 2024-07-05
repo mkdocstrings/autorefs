@@ -106,7 +106,7 @@ class AutorefsPlugin(BasePlugin):
             if len(urls) > 1:
                 log.warning(
                     f"Multiple URLs found for '{identifier}': {urls}. "
-                    "Please use unique identifiers, or unique Markdown anchors (see our docs).",
+                    "Make sure to use unique headings, identifiers, or Markdown anchors (see our docs).",
                 )
             return urls[0]
 
