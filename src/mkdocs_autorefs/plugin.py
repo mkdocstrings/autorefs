@@ -90,11 +90,7 @@ class AutorefsPlugin(BasePlugin):
         fallback: Callable[[str], Sequence[str]] | None = None,
     ) -> str:
         try:
-            if len(self._url_map[identifier]) > 1:
-                log.warning(
-                    f"Multiple urls found for '{identifier}': {self._url_map[identifier]}. Please specify a custom unique identifier.",
-                )
-            return self._url_map[identifier][0]
+            urls = self._url_map[identifier]
         except KeyError:
             if identifier in self._abs_url_map:
                 return self._abs_url_map[identifier]
@@ -106,6 +102,13 @@ class AutorefsPlugin(BasePlugin):
                         self._url_map[identifier] = [url]
                         return url
             raise
+        else:
+            if len(urls) > 1:
+                log.warning(
+                    f"Multiple URLs found for '{identifier}': {urls}. "
+                    "Please use unique identifiers, or unique Markdown anchors (see our docs).",
+                )
+            return urls[0]
 
     def get_item_url(
         self,
