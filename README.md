@@ -90,7 +90,7 @@ Paragraph about foobar.
 ```md
 In any document.
 
-Check out the [paragraph about foobar][foobar-pararaph].
+Check out the [paragraph about foobar][foobar-paragraph].
 ```
 
 If you add a Markdown anchor right above a heading, this anchor will redirect to the heading itself:
