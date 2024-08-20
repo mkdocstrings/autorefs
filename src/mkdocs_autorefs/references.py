@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import warnings
+from functools import lru_cache
 from html import escape, unescape
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match
@@ -385,6 +386,11 @@ class _PendingAnchors:
         self.anchors.clear()
 
 
+@lru_cache
+def _log_enabling_markdown_anchors() -> None:
+    log.debug("Enabling Markdown anchors feature")
+
+
 class AutorefsExtension(Extension):
     """Markdown extension that transforms unresolved references into auto-references.
 
@@ -424,7 +430,7 @@ class AutorefsExtension(Extension):
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
         if self.plugin is not None and self.plugin.scan_toc and "attr_list" in md.treeprocessors:
-            log.debug("Enabling Markdown anchors feature")
+            _log_enabling_markdown_anchors()
             md.treeprocessors.register(
                 AnchorScannerTreeProcessor(self.plugin, md),
                 AnchorScannerTreeProcessor.name,
