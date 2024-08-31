@@ -102,15 +102,15 @@ class AutorefsPlugin(BasePlugin):
                         self._url_map[identifier] = [url]
                         return url
             raise
-        else:
-            if len(urls) > 1:
-                log.warning(
-                    "Multiple URLs found for '%s': %s. "
-                    "Make sure to use unique headings, identifiers, or Markdown anchors (see our docs).",
-                    identifier,
-                    urls,
-                )
-            return urls[0]
+
+        if len(urls) > 1:
+            log.warning(
+                "Multiple URLs found for '%s': %s. "
+                "Make sure to use unique headings, identifiers, or Markdown anchors (see our docs).",
+                identifier,
+                urls,
+            )
+        return urls[0]
 
     def get_item_url(
         self,
