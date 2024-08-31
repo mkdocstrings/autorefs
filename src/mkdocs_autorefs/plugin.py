@@ -105,8 +105,10 @@ class AutorefsPlugin(BasePlugin):
         else:
             if len(urls) > 1:
                 log.warning(
-                    f"Multiple URLs found for '{identifier}': {urls}. "
+                    "Multiple URLs found for '%s': %s. "
                     "Make sure to use unique headings, identifiers, or Markdown anchors (see our docs).",
+                    identifier,
+                    urls,
                 )
             return urls[0]
 
@@ -182,7 +184,7 @@ class AutorefsPlugin(BasePlugin):
             The same HTML. We only use this hook to map anchors to URLs.
         """
         if self.scan_toc:
-            log.debug(f"Mapping identifiers to URLs for page {page.file.src_path}")
+            log.debug("Mapping identifiers to URLs for page %s", page.file.src_path)
             for item in page.toc.items:
                 self.map_urls(page.url, item)
         return html
@@ -221,7 +223,7 @@ class AutorefsPlugin(BasePlugin):
         Returns:
             Modified HTML.
         """
-        log.debug(f"Fixing references in page {page.file.src_path}")
+        log.debug("Fixing references in page %s", page.file.src_path)
 
         url_mapper = functools.partial(self.get_item_url, from_url=page.url, fallback=self.get_fallback_anchor)
         fixed_output, unmapped = fix_refs(output, url_mapper, _legacy_refs=self.legacy_refs)
