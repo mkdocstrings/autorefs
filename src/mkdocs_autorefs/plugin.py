@@ -37,8 +37,7 @@ except ImportError:
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 
-class AutorefsPlugin(BasePlugin):
-    """An `mkdocs` plugin.
+    """The `autorefs` plugin for `mkdocs`.
 
     This plugin defines the following event hooks:
 
