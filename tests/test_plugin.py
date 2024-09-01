@@ -60,3 +60,27 @@ def test_dont_make_relative_urls_relative_again() -> None:
             plugin.get_item_url("hello", from_url="baz/bar/foo.html", fallback=lambda _: ("foo.bar.baz",))
             == "../../foo/bar/baz.html#foo.bar.baz"
         )
+
+
+@pytest.mark.parametrize(
+    ("base", "urls", "expected"),
+    [
+        # One URL is closest.
+        ("", ["x/#b", "#b"], "#b"),
+        # Several URLs are equally close.
+        ("a/b", ["x/#e", "a/c/#e", "a/d/#e"], "a/c/#e"),
+        ("a/b/", ["x/#e", "a/d/#e", "a/c/#e"], "a/d/#e"),
+        # Two close URLs, one is shorter (closer).
+        ("a/b", ["x/#e", "a/c/#e", "a/c/d/#e"], "a/c/#e"),
+        ("a/b/", ["x/#e", "a/c/d/#e", "a/c/#e"], "a/c/#e"),
+        # Deeper-nested URLs.
+        ("a/b/c", ["x/#e", "a/#e", "a/b/#e", "a/b/c/#e", "a/b/c/d/#e"], "a/b/c/#e"),
+        ("a/b/c/", ["x/#e", "a/#e", "a/b/#e", "a/b/c/d/#e", "a/b/c/#e"], "a/b/c/#e"),
+        # No closest URL, use first one even if longer distance.
+        ("a", ["b/c/#d", "c/#d"], "b/c/#d"),
+        ("a/", ["c/#d", "b/c/#d"], "c/#d"),
+    ],
+)
+def test_find_closest_url(base: str, urls: list[str], expected: str) -> None:
+    """Find closest URLs given a list of URLs."""
+    assert AutorefsPlugin._get_closest_url(base, urls) == expected
