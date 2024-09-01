@@ -5,6 +5,24 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.2.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.2.0) - 2024-09-01
+
+<small>[Compare with 1.1.0](https://github.com/mkdocstrings/autorefs/compare/1.1.0...1.2.0)</small>
+
+### Features
+
+- Provide hook interface, use it to expand identifiers, attach additional context to references, and give more context around unmapped identifiers ([fb8df98](https://github.com/mkdocstrings/autorefs/commit/fb8df98fc8f9fb1b3accb8a305cc90b3a3507d86) by Timothée Mazzucotelli). [Issue-54](https://github.com/mkdocstrings/autorefs/issues/54), [PR-mkdocstrings#666](https://github.com/mkdocstrings/mkdocstrings/pull/666)
+- Add option to resolve autorefs to closest URLs when multiple ones are found ([2916eb2](https://github.com/mkdocstrings/autorefs/commit/2916eb27dec89287dcaa1aefb4e9532156b66e30) by Timothée Mazzucotelli). [Issue-52](https://github.com/mkdocstrings/autorefs/issues/52)
+
+### Bug Fixes
+
+- Don't ignore identifiers containing spaces and slashes ([b36a0d1](https://github.com/mkdocstrings/autorefs/commit/b36a0d1c4b0f5a6441ee6a2de7409942a8702bd8) by Timothée Mazzucotelli). [Issue-55](https://github.com/mkdocstrings/autorefs/issues/55)
+
+### Code Refactoring
+
+- Emit deprecation warnings when old-style spans are found ([4f2be46](https://github.com/mkdocstrings/autorefs/commit/4f2be4633eec42c8e8582804741548a8e5602727) by Timothée Mazzucotelli).
+- Use `%s` formatting instead of f-strings in log messages ([0cedf9d](https://github.com/mkdocstrings/autorefs/commit/0cedf9d82ede8ba10dc8e100d7d1e5ce488fca34) by Timothée Mazzucotelli).
+
 ## [1.1.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.1.0) - 2024-08-20
 
 <small>[Compare with 1.0.1](https://github.com/mkdocstrings/autorefs/compare/1.0.1...1.1.0)</small>
