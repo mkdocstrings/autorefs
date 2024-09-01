@@ -216,6 +216,12 @@ def _legacy_fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Ca
                 return f"[{identifier}][]"
             return f"[{title}][{identifier}]"
 
+        warnings.warn(
+            "autorefs `span` elements are deprecated in favor of `autoref` elements: "
+            f'`<span data-autorefs-identifier="{identifier}">...</span>` becomes `<autoref identifer="{identifier}">...</autoref>`',
+            DeprecationWarning,
+            stacklevel=1,
+        )
         parsed = urlsplit(url)
         external = parsed.scheme or parsed.netloc
         classes = ["autorefs", "autorefs-external" if external else "autorefs-internal", *classes]
