@@ -146,11 +146,11 @@ def test_multiline_links() -> None:
 
 
 def test_no_reference_with_space() -> None:
-    """Check that references with spaces are not fixed."""
+    """Check that references with spaces are fixed."""
     run_references_test(
-        url_map={"Foo bar": "foo.html#Foo bar"},
+        url_map={"Foo bar": "foo.html#bar"},
         source="This [Foo bar][].",
-        output="<p>This [Foo bar][].</p>",
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#bar">Foo bar</a>.</p>',
     )
 
 
@@ -203,12 +203,17 @@ def test_missing_reference_with_markdown_implicit() -> None:
     )
 
 
-def test_ignore_reference_with_special_char() -> None:
-    """Check that references are not considered if there is a space character inside."""
+def test_reference_with_markup() -> None:
+    """Check that references with markup are resolved (and need escaping to prevent rendering)."""
     run_references_test(
-        url_map={"a b": "foo.html#Foo"},
+        url_map={"*a b*": "foo.html#Foo"},
         source="This [*a b*][].",
-        output="<p>This [<em>a b</em>][].</p>",
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#Foo"><em>a b</em></a>.</p>',
+    )
+    run_references_test(
+        url_map={"*a/b*": "foo.html#Foo"},
+        source="This [`*a/b*`][].",
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#Foo"><code>*a/b*</code></a>.</p>',
     )
 
 

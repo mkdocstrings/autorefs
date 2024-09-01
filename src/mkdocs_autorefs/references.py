@@ -88,11 +88,10 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
         if not handled or identifier is None:
             return None, None, None
 
-        if re.search(r"[/ \x00-\x1f]", identifier):
-            # Do nothing if the matched reference contains:
-            # - a space, slash or control character (considered unintended);
-            # - specifically \x01 is used by Python-Markdown HTML stash when there's inline formatting,
-            #   but references with Markdown formatting are not possible anyway.
+        if re.search(r"[\x00-\x1f]", identifier):
+            # Do nothing if the matched reference contains control characters (from 0 to 31 included).
+            # Specifically `\x01` is used by Python-Markdown HTML stash when there's inline formatting,
+            # but references with Markdown formatting are not possible anyway.
             return None, m.start(0), end
 
         return self._make_tag(identifier, text), m.start(0), end
