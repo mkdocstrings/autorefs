@@ -9,7 +9,7 @@ import markdown
 import pytest
 
 from mkdocs_autorefs.plugin import AutorefsPlugin
-from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
+from mkdocs_autorefs.references import AutorefsExtension, AutorefsHookInterface, fix_refs, relative_url
 
 
 @pytest.mark.parametrize(
@@ -46,7 +46,7 @@ def run_references_test(
     url_map: dict[str, str],
     source: str,
     output: str,
-    unmapped: list[str] | None = None,
+    unmapped: list[tuple[str, AutorefsHookInterface.Context | None]] | None = None,
     from_url: str = "page.html",
     extensions: Mapping = {},
 ) -> None:
@@ -169,7 +169,7 @@ def test_missing_reference() -> None:
         url_map={"NotFoo": "foo.html#NotFoo"},
         source="[Foo][]",
         output="<p>[Foo][]</p>",
-        unmapped=["Foo"],
+        unmapped=[("Foo", None)],
     )
 
 
@@ -179,7 +179,7 @@ def test_missing_reference_with_markdown_text() -> None:
         url_map={"NotFoo": "foo.html#NotFoo"},
         source="[`Foo`][Foo]",
         output="<p>[<code>Foo</code>][Foo]</p>",
-        unmapped=["Foo"],
+        unmapped=[("Foo", None)],
     )
 
 
@@ -189,7 +189,7 @@ def test_missing_reference_with_markdown_id() -> None:
         url_map={"Foo": "foo.html#Foo", "NotFoo": "foo.html#NotFoo"},
         source="[Foo][*NotFoo*]",
         output="<p>[Foo][*NotFoo*]</p>",
-        unmapped=["*NotFoo*"],
+        unmapped=[("*NotFoo*", None)],
     )
 
 
@@ -199,7 +199,7 @@ def test_missing_reference_with_markdown_implicit() -> None:
         url_map={"Foo-bar": "foo.html#Foo-bar"},
         source="[*Foo-bar*][] and [`Foo`-bar][]",
         output="<p>[<em>Foo-bar</em>][*Foo-bar*] and [<code>Foo</code>-bar][]</p>",
-        unmapped=["*Foo-bar*"],
+        unmapped=[("*Foo-bar*", None)],
     )
 
 
@@ -224,7 +224,7 @@ def test_legacy_custom_required_reference() -> None:
     with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
         output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '[foo][bar] <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
-    assert unmapped == ["bar"]
+    assert unmapped == [("bar", None)]
 
 
 def test_custom_required_reference() -> None:
@@ -233,7 +233,7 @@ def test_custom_required_reference() -> None:
     source = "<autoref identifier=bar>foo</autoref> <autoref identifier=ok>ok</autoref>"
     output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '[foo][bar] <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
-    assert unmapped == ["bar"]
+    assert unmapped == [("bar", None)]
 
 
 def test_legacy_custom_optional_reference() -> None:

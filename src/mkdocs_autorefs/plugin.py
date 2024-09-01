@@ -302,7 +302,8 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         fixed_output, unmapped = fix_refs(output, url_mapper, _legacy_refs=self.legacy_refs)
 
         if unmapped and log.isEnabledFor(logging.WARNING):
-            for ref in unmapped:
-                log.warning(f"{page.file.src_path}: Could not find cross-reference target '[{ref}]'")
+            for ref, context in unmapped:
+                message = f"from {context.filepath}:{context.lineno}: ({context.origin}) " if context else ""
+                log.warning(f"{page.file.src_path}: {message}Could not find cross-reference target '{ref}'")
 
         return fixed_output

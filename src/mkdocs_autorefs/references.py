@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import re
 import warnings
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from functools import lru_cache
 from html import escape, unescape
 from html.parser import HTMLParser
@@ -20,6 +22,8 @@ from markdown.treeprocessors import Treeprocessor
 from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from markdown import Markdown
 
     from mkdocs_autorefs.plugin import AutorefsPlugin
@@ -59,10 +63,56 @@ in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page]
 """
 
 
+class AutorefsHookInterface(ABC):
+    """An interface for hooking into how AutoRef handles inline references."""
+
+    @dataclass
+    class Context:
+        """The context around an auto-reference."""
+
+        domain: str
+        role: str
+        origin: str
+        filepath: str | Path
+        lineno: int
+
+        def as_dict(self) -> dict[str, str]:
+            """Convert the context to a dictionary of HTML attributes."""
+            return {
+                "domain": self.domain,
+                "role": self.role,
+                "origin": self.origin,
+                "filepath": str(self.filepath),
+                "lineno": str(self.lineno),
+            }
+
+    @abstractmethod
+    def expand_identifier(self, identifier: str) -> str:
+        """Expand an identifier in a given context.
+
+        Parameters:
+            identifier: The identifier to expand.
+
+        Returns:
+            The expanded identifier.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_context(self) -> AutorefsHookInterface.Context:
+        """Get the current context.
+
+        Returns:
+            The current context.
+        """
+        raise NotImplementedError
+
+
 class AutorefsInlineProcessor(ReferenceInlineProcessor):
     """A Markdown extension to handle inline references."""
 
     name: str = "mkdocs-autorefs"
+    hook: AutorefsHookInterface | None = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D107
         super().__init__(REFERENCE_RE, *args, **kwargs)
@@ -145,6 +195,9 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
             A new element.
         """
         el = Element("autoref")
+        if self.hook:
+            identifier = self.hook.expand_identifier(identifier)
+            el.attrib.update(self.hook.get_context().as_dict())
         el.set("identifier", identifier)
         el.text = text
         return el
@@ -177,7 +230,10 @@ def relative_url(url_a: str, url_b: str) -> str:
 
 
 # YORE: Bump 2: Remove block.
-def _legacy_fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
+def _legacy_fix_ref(
+    url_mapper: Callable[[str], str],
+    unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
+) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
     In our context, we match Markdown references and replace them with HTML links.
@@ -210,7 +266,7 @@ def _legacy_fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Ca
                 return title
             if kind == "autorefs-optional-hover":
                 return f'<span title="{identifier}">{title}</span>'
-            unmapped.append(identifier)
+            unmapped.append((identifier, None))
             if title == identifier:
                 return f"[{identifier}][]"
             return f"[{title}][{identifier}]"
@@ -233,7 +289,30 @@ def _legacy_fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Ca
 
 
 class _AutorefsAttrs(dict):
-    _handled_attrs: ClassVar[set[str]] = {"identifier", "optional", "hover", "class"}
+    _handled_attrs: ClassVar[set[str]] = {
+        "identifier",
+        "optional",
+        "hover",
+        "class",
+        "domain",
+        "role",
+        "origin",
+        "filepath",
+        "lineno",
+    }
+
+    @property
+    def context(self) -> AutorefsHookInterface.Context | None:
+        try:
+            return AutorefsHookInterface.Context(
+                domain=self["domain"],
+                role=self["role"],
+                origin=self["origin"],
+                filepath=self["filepath"],
+                lineno=int(self["lineno"]),
+            )
+        except KeyError:
+            return None
 
     @property
     def remaining(self) -> str:
@@ -257,7 +336,10 @@ class _HTMLAttrsParser(HTMLParser):
 _html_attrs_parser = _HTMLAttrsParser()
 
 
-def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
+def fix_ref(
+    url_mapper: Callable[[str], str],
+    unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
+) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
     In our context, we match Markdown references and replace them with HTML links.
@@ -290,7 +372,7 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
                 if hover:
                     return f'<span title="{identifier}">{title}</span>'
                 return title
-            unmapped.append(identifier)
+            unmapped.append((identifier, attrs.context))
             if title == identifier:
                 return f"[{identifier}][]"
             return f"[{title}][{identifier}]"
@@ -310,7 +392,12 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
 
 
 # YORE: Bump 2: Replace `, *, _legacy_refs: bool = True` with `` within line.
-def fix_refs(html: str, url_mapper: Callable[[str], str], *, _legacy_refs: bool = True) -> tuple[str, list[str]]:
+def fix_refs(
+    html: str,
+    url_mapper: Callable[[str], str],
+    *,
+    _legacy_refs: bool = True,
+) -> tuple[str, list[tuple[str, AutorefsHookInterface.Context | None]]]:
     """Fix all references in the given HTML text.
 
     Arguments:
@@ -319,9 +406,9 @@ def fix_refs(html: str, url_mapper: Callable[[str], str], *, _legacy_refs: bool 
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
 
     Returns:
-        The fixed HTML.
+        The fixed HTML, and a list of unmapped identifiers (string and optional context).
     """
-    unmapped: list[str] = []
+    unmapped: list[tuple[str, AutorefsHookInterface.Context | None]] = []
     html = AUTOREF_RE.sub(fix_ref(url_mapper, unmapped), html)
 
     # YORE: Bump 2: Remove block.
