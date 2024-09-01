@@ -5,6 +5,29 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.1.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.1.0) - 2024-08-20
+
+<small>[Compare with 1.0.1](https://github.com/mkdocstrings/autorefs/compare/1.0.1...1.1.0)</small>
+
+### Deprecations
+
+- `AUTO_REF_RE` is renamed `AUTOREF_RE` (and updated for an improved version of `fix_refs`)
+- `AutoRefInlineProcessor` is renamed `AutorefsInlineProcessor`
+
+### Features
+
+- Warn when multiple URLs are found for the same identifier ([c630354](https://github.com/mkdocstrings/autorefs/commit/c6303542018ca835f6941c070accb582f851f6b1) by Markus B). [Issue-35](https://github.com/mkdocstrings/autorefs/issues/35), [PR-50](https://github.com/mkdocstrings/autorefs/pull/50), Co-authored-by: Timothée Mazzucotelli <dev@pawamoy.fr>
+
+### Bug Fixes
+
+- Only log "Markdown anchors feature enabled" once ([1c9bda1](https://github.com/mkdocstrings/autorefs/commit/1c9bda1ab4f13c9a5cf5d202de755e5296729654) by Timothée Mazzucotelli). [Issue-44](https://github.com/mkdocstrings/autorefs/issues/44)
+
+### Code Refactoring
+
+- Use a custom autoref HTML tag ([e142023](https://github.com/mkdocstrings/autorefs/commit/e14202317dc13dd5eed93b5d7cfd183c87de893f) by Timothée Mazzucotelli). [PR-48](https://github.com/mkdocstrings/autorefs/pull/48)
+- Rename AutoRefInlineProcessor to AutorefsInlineProcessor ([ffcaa01](https://github.com/mkdocstrings/autorefs/commit/ffcaa0178b642e423acdc66d35f1e6b207099dc7) by Timothée Mazzucotelli).
+- Attach name to processors for easier retrieval ([036b825](https://github.com/mkdocstrings/autorefs/commit/036b825c7994b2586564e8707fbc0b3627c29569) by Timothée Mazzucotelli).
+
 ## [1.0.1](https://github.com/mkdocstrings/autorefs/releases/tag/1.0.1) - 2024-02-29
 
 <small>[Compare with 1.0.0](https://github.com/mkdocstrings/autorefs/compare/1.0.0...1.0.1)</small>

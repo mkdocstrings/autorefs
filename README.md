@@ -5,7 +5,7 @@
 [![pypi version](https://img.shields.io/pypi/v/mkdocs-autorefs.svg)](https://pypi.org/project/mkdocs-autorefs/)
 [![conda version](https://img.shields.io/conda/vn/conda-forge/mkdocs-autorefs.svg)](https://anaconda.org/conda-forge/mkdocs-autorefs)
 [![gitpod](https://img.shields.io/badge/gitpod-workspace-708FCC.svg?style=flat)](https://gitpod.io/#https://github.com/mkdocstrings/autorefs)
-[![gitter](https://badges.gitter.im/join%20chat.svg)](https://app.gitter.im/#/room/#autorefs:gitter.im)
+[![gitter](https://badges.gitter.im/join%20chat.svg)](https://app.gitter.im/#/room/#mkdocstrings/autorefs:gitter.im)
 
 Automatically link across pages in MkDocs.
 
@@ -47,9 +47,38 @@ We can [link to that heading][hello-world] from another page too.
 This works the same as [a normal link to that heading](../doc1.md#hello-world).
 ```
 
-Linking to a heading without needing to know the destination page can be useful if specifying that path is cumbersome, e.g. when the pages have deeply nested paths, are far apart, or are moved around frequently. And the issue is somewhat exacerbated by the fact that [MkDocs supports only *relative* links between pages](https://github.com/mkdocs/mkdocs/issues/1592).
+Linking to a heading without needing to know the destination page can be useful if specifying that path is cumbersome, e.g. when the pages have deeply nested paths, are far apart, or are moved around frequently.
 
-Note that this plugin's behavior is undefined when trying to link to a heading title that appears several times throughout the site. Currently it arbitrarily chooses one of the pages. In such cases, use [Markdown anchors](#markdown-anchors) to add unique aliases to your headings.
+### Non-unique headings
+
+When linking to a heading that appears several times throughout the site, this plugin will log a warning message stating that multiple URLs were found and that headings should be made unique, and will resolve the link using the first found URL.
+
+To prevent getting warnings, use [Markdown anchors](#markdown-anchors) to add unique aliases to your headings, and use these aliases when referencing the headings.
+
+If you cannot use Markdown anchors, for example because you inject the same generated contents in multiple locations (for example mkdocstrings' API documentation), then you can try to alleviate the warnings by enabling the `resolve_closest` option:
+
+```yaml
+plugins:
+- autorefs:
+    resolve_closest: true
+```
+
+When `resolve_closest` is enabled, and multiple URLs are found for the same identifier, the plugin will try to resolve to the one that is "closest" to the current page (the page containing the link). By closest, we mean:
+
+- URLs that are relative to the current page's URL, climbing up parents
+- if multiple URLs are relative to it, use the one at the shortest distance if possible.
+
+If multiple relative URLs are at the same distance, the first of these URLs will be used. If no URL is relative to the current page's URL, the first URL of all found URLs will be used.
+
+Examples:
+
+Current page | Candidate URLs | Relative URLs | Winner
+------------ | -------------- | ------------- | ------
+` ` | `x/#b`, `#b` | `#b` | `#b` (only one relative)
+`a/` | `b/c/#d`, `c/#d` | none | `b/c/#d` (no relative, use first one, even if longer distance)
+`a/b/` | `x/#e`, `a/c/#e`, `a/d/#e` | `a/c/#e`, `a/d/#e` (relative to parent `a/`) | `a/c/#e` (same distance, use first one)
+`a/b/` | `x/#e`, `a/c/d/#e`, `a/c/#e` | `a/c/d/#e`, `a/c/#e` (relative to parent `a/`) | `a/c/#e` (shortest distance)
+`a/b/c/` | `x/#e`, `a/#e`, `a/b/#e`, `a/b/c/d/#e`, `a/b/c/#e` | `a/b/c/d/#e`, `a/b/c/#e` | `a/b/c/#e` (shortest distance)
 
 ### Markdown anchors
 
@@ -90,7 +119,7 @@ Paragraph about foobar.
 ```md
 In any document.
 
-Check out the [paragraph about foobar][foobar-pararaph].
+Check out the [paragraph about foobar][foobar-paragraph].
 ```
 
 If you add a Markdown anchor right above a heading, this anchor will redirect to the heading itself:
@@ -143,3 +172,14 @@ You don't want to change headings and make them redundant, like `## Arch: Instal
 ```
 
 ...changing `arch` by `debian`, `gentoo`, etc. in the other pages.
+
+---
+
+You can also change the actual identifier of a heading, thanks again to the `attr_list` Markdown extension:
+
+```md
+## Install from sources { #arch-install-src }
+...
+```
+
+...though note that this will impact the URL anchor too (and therefore the permalink to the heading).

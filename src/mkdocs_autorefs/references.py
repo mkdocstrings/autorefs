@@ -7,6 +7,7 @@ import re
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from functools import lru_cache
 from html import escape, unescape
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match
@@ -36,6 +37,7 @@ except ImportError:
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 
+# YORE: Bump 2: Remove block.
 def __getattr__(name: str) -> Any:
     if name == "AutoRefInlineProcessor":
         warnings.warn("AutoRefInlineProcessor was renamed AutorefsInlineProcessor", DeprecationWarning, stacklevel=2)
@@ -44,6 +46,8 @@ def __getattr__(name: str) -> Any:
 
 
 _ATTR_VALUE = r'"[^"<>]+"|[^"<> ]+'  # Possibly with double quotes around
+
+# YORE: Bump 2: Remove block.
 AUTO_REF_RE = re.compile(
     rf"<span data-(?P<kind>autorefs-(?:identifier|optional|optional-hover))=(?P<identifier>{_ATTR_VALUE})"
     rf"(?: class=(?P<class>{_ATTR_VALUE}))?(?P<attrs> [^<>]+)?>(?P<title>.*?)</span>",
@@ -134,11 +138,10 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
         if not handled or identifier is None:
             return None, None, None
 
-        if re.search(r"[/ \x00-\x1f]", identifier):
-            # Do nothing if the matched reference contains:
-            # - a space, slash or control character (considered unintended);
-            # - specifically \x01 is used by Python-Markdown HTML stash when there's inline formatting,
-            #   but references with Markdown formatting are not possible anyway.
+        if re.search(r"[\x00-\x1f]", identifier):
+            # Do nothing if the matched reference contains control characters (from 0 to 31 included).
+            # Specifically `\x01` is used by Python-Markdown HTML stash when there's inline formatting,
+            # but references with Markdown formatting are not possible anyway.
             return None, m.start(0), end
 
         return self._make_tag(identifier, text), m.start(0), end
@@ -226,6 +229,7 @@ def relative_url(url_a: str, url_b: str) -> str:
     return f"{relative}#{anchor}"
 
 
+# YORE: Bump 2: Remove block.
 def _legacy_fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
@@ -264,6 +268,12 @@ def _legacy_fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Ca
                 return f"[{identifier}][]"
             return f"[{title}][{identifier}]"
 
+        warnings.warn(
+            "autorefs `span` elements are deprecated in favor of `autoref` elements: "
+            f'`<span data-autorefs-identifier="{identifier}">...</span>` becomes `<autoref identifer="{identifier}">...</autoref>`',
+            DeprecationWarning,
+            stacklevel=1,
+        )
         parsed = urlsplit(url)
         external = parsed.scheme or parsed.netloc
         classes = ["autorefs", "autorefs-external" if external else "autorefs-internal", *classes]
@@ -352,6 +362,7 @@ def fix_ref(url_mapper: Callable[[str], str], unmapped: list[str]) -> Callable:
     return inner
 
 
+# YORE: Bump 2: Replace `, *, _legacy_refs: bool = True` with `` within line.
 def fix_refs(html: str, url_mapper: Callable[[str], str], *, _legacy_refs: bool = True) -> tuple[str, list[str]]:
     """Fix all references in the given HTML text.
 
@@ -365,8 +376,11 @@ def fix_refs(html: str, url_mapper: Callable[[str], str], *, _legacy_refs: bool 
     """
     unmapped: list[str] = []
     html = AUTOREF_RE.sub(fix_ref(url_mapper, unmapped), html)
+
+    # YORE: Bump 2: Remove block.
     if _legacy_refs:
         html = AUTO_REF_RE.sub(_legacy_fix_ref(url_mapper, unmapped), html)
+
     return html, unmapped
 
 
@@ -438,6 +452,11 @@ class _PendingAnchors:
         self.anchors.clear()
 
 
+@lru_cache
+def _log_enabling_markdown_anchors() -> None:
+    log.debug("Enabling Markdown anchors feature")
+
+
 class AutorefsExtension(Extension):
     """Markdown extension that transforms unresolved references into auto-references.
 
@@ -477,7 +496,7 @@ class AutorefsExtension(Extension):
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
         if self.plugin is not None and self.plugin.scan_toc and "attr_list" in md.treeprocessors:
-            log.debug("Enabling Markdown anchors feature")
+            _log_enabling_markdown_anchors()
             md.treeprocessors.register(
                 AnchorScannerTreeProcessor(self.plugin, md),
                 AnchorScannerTreeProcessor.name,

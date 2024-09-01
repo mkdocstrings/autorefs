@@ -15,9 +15,12 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
+import sys
 from typing import TYPE_CHECKING, Any, Callable, Sequence
 from urllib.parse import urlsplit
 
+from mkdocs.config.base import Config
+from mkdocs.config.config_options import Type
 from mkdocs.plugins import BasePlugin
 from mkdocs.structure.pages import Page
 
@@ -37,8 +40,42 @@ except ImportError:
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 
-class AutorefsPlugin(BasePlugin):
-    """An `mkdocs` plugin.
+# YORE: EOL 3.8: Remove block.
+if sys.version_info < (3, 9):
+    from pathlib import PurePosixPath
+
+    class URL(PurePosixPath):  # noqa: D101
+        def is_relative_to(self, *args: Any) -> bool:  # noqa: D102
+            try:
+                self.relative_to(*args)
+            except ValueError:
+                return False
+            return True
+else:
+    from pathlib import PurePosixPath as URL  # noqa: N814
+
+
+class AutorefsConfig(Config):
+    """Configuration options for the `autorefs` plugin."""
+
+    resolve_closest = Type(bool, default=False)
+    """Whether to resolve an autoref to the closest URL when multiple URLs are found for an identifier.
+
+    By closest, we mean a combination of "relative to the current page" and "shortest distance from the current page".
+
+    For example, if you link to identifier `hello` from page `foo/bar/`,
+    and the identifier is found in `foo/`, `foo/baz/` and `foo/bar/baz/qux/` pages,
+    autorefs will resolve to `foo/bar/baz/qux`, which is the only URL relative to `foo/bar/`.
+
+    If multiple URLs are equally close, autorefs will resolve to the first of these equally close URLs.
+    If autorefs cannot find any URL that is close to the current page, it will log a warning and resolve to the first URL found.
+
+    When false and multiple URLs are found for an identifier, autorefs will log a warning and resolve to the first URL.
+    """
+
+
+class AutorefsPlugin(BasePlugin[AutorefsConfig]):
+    """The `autorefs` plugin for `mkdocs`.
 
     This plugin defines the following event hooks:
 
@@ -57,7 +94,7 @@ class AutorefsPlugin(BasePlugin):
     def __init__(self) -> None:
         """Initialize the object."""
         super().__init__()
-        self._url_map: dict[str, str] = {}
+        self._url_map: dict[str, list[str]] = {}
         self._abs_url_map: dict[str, str] = {}
         self.get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
 
@@ -68,7 +105,12 @@ class AutorefsPlugin(BasePlugin):
             page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
             identifier: The HTML anchor (without '#') as a string.
         """
-        self._url_map[identifier] = f"{page}#{anchor or identifier}"
+        page_anchor = f"{page}#{anchor or identifier}"
+        if identifier in self._url_map:
+            if page_anchor not in self._url_map[identifier]:
+                self._url_map[identifier].append(page_anchor)
+        else:
+            self._url_map[identifier] = [page_anchor]
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
@@ -79,13 +121,47 @@ class AutorefsPlugin(BasePlugin):
         """
         self._abs_url_map[identifier] = url
 
+    @staticmethod
+    def _get_closest_url(from_url: str, urls: list[str]) -> str:
+        """Return the closest URL to the current page.
+
+        Arguments:
+            from_url: The URL of the base page, from which we link towards the targeted pages.
+            urls: A list of URLs to choose from.
+
+        Returns:
+            The closest URL to the current page.
+        """
+        base_url = URL(from_url)
+
+        while True:
+            if candidates := [url for url in urls if URL(url).is_relative_to(base_url)]:
+                break
+            base_url = base_url.parent
+            if not base_url.name:
+                break
+
+        if not candidates:
+            log.warning(
+                "Could not find closest URL (from %s, candidates: %s). "
+                "Make sure to use unique headings, identifiers, or Markdown anchors (see our docs).",
+                from_url,
+                urls,
+            )
+            return urls[0]
+
+        winner = candidates[0] if len(candidates) == 1 else min(candidates, key=lambda c: c.count("/"))
+        log.debug("Closest URL found: %s (from %s, candidates: %s)", winner, from_url, urls)
+        return winner
+
     def _get_item_url(
         self,
         identifier: str,
         fallback: Callable[[str], Sequence[str]] | None = None,
+        from_url: str | None = None,
     ) -> str:
         try:
-            return self._url_map[identifier]
+            urls = self._url_map[identifier]
         except KeyError:
             if identifier in self._abs_url_map:
                 return self._abs_url_map[identifier]
@@ -94,9 +170,20 @@ class AutorefsPlugin(BasePlugin):
                 for new_identifier in new_identifiers:
                     with contextlib.suppress(KeyError):
                         url = self._get_item_url(new_identifier)
-                        self._url_map[identifier] = url
+                        self._url_map[identifier] = [url]
                         return url
             raise
+
+        if len(urls) > 1:
+            if self.config.resolve_closest and from_url is not None:
+                return self._get_closest_url(from_url, urls)
+            log.warning(
+                "Multiple URLs found for '%s': %s. "
+                "Make sure to use unique headings, identifiers, or Markdown anchors (see our docs).",
+                identifier,
+                urls,
+            )
+        return urls[0]
 
     def get_item_url(
         self,
@@ -114,7 +201,7 @@ class AutorefsPlugin(BasePlugin):
         Returns:
             A site-relative URL.
         """
-        url = self._get_item_url(identifier, fallback)
+        url = self._get_item_url(identifier, fallback, from_url)
         if from_url is not None:
             parsed = urlsplit(url)
             if not parsed.scheme and not parsed.netloc:
@@ -170,7 +257,7 @@ class AutorefsPlugin(BasePlugin):
             The same HTML. We only use this hook to map anchors to URLs.
         """
         if self.scan_toc:
-            log.debug(f"Mapping identifiers to URLs for page {page.file.src_path}")
+            log.debug("Mapping identifiers to URLs for page %s", page.file.src_path)
             for item in page.toc.items:
                 self.map_urls(page.url, item)
         return html
@@ -209,7 +296,7 @@ class AutorefsPlugin(BasePlugin):
         Returns:
             Modified HTML.
         """
-        log.debug(f"Fixing references in page {page.file.src_path}")
+        log.debug("Fixing references in page %s", page.file.src_path)
 
         url_mapper = functools.partial(self.get_item_url, from_url=page.url, fallback=self.get_fallback_anchor)
         fixed_output, unmapped = fix_refs(output, url_mapper, _legacy_refs=self.legacy_refs)

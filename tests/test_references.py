@@ -146,11 +146,11 @@ def test_multiline_links() -> None:
 
 
 def test_no_reference_with_space() -> None:
-    """Check that references with spaces are not fixed."""
+    """Check that references with spaces are fixed."""
     run_references_test(
-        url_map={"Foo bar": "foo.html#Foo bar"},
+        url_map={"Foo bar": "foo.html#bar"},
         source="This [Foo bar][].",
-        output="<p>This [Foo bar][].</p>",
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#bar">Foo bar</a>.</p>',
     )
 
 
@@ -203,12 +203,17 @@ def test_missing_reference_with_markdown_implicit() -> None:
     )
 
 
-def test_ignore_reference_with_special_char() -> None:
-    """Check that references are not considered if there is a space character inside."""
+def test_reference_with_markup() -> None:
+    """Check that references with markup are resolved (and need escaping to prevent rendering)."""
     run_references_test(
-        url_map={"a b": "foo.html#Foo"},
+        url_map={"*a b*": "foo.html#Foo"},
         source="This [*a b*][].",
-        output="<p>This [<em>a b</em>][].</p>",
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#Foo"><em>a b</em></a>.</p>',
+    )
+    run_references_test(
+        url_map={"*a/b*": "foo.html#Foo"},
+        source="This [`*a/b*`][].",
+        output='<p>This <a class="autorefs autorefs-internal" href="foo.html#Foo"><code>*a/b*</code></a>.</p>',
     )
 
 
@@ -216,7 +221,8 @@ def test_legacy_custom_required_reference() -> None:
     """Check that external HTML-based references are expanded or reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = "<span data-autorefs-identifier=bar>foo</span> <span data-autorefs-identifier=ok>ok</span>"
-    output, unmapped = fix_refs(source, url_map.__getitem__)
+    with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
+        output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '[foo][bar] <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
     assert unmapped == ["bar"]
 
@@ -234,7 +240,8 @@ def test_legacy_custom_optional_reference() -> None:
     """Check that optional HTML-based references are expanded and never reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional="bar">foo</span> <span data-autorefs-optional=ok>ok</span>'
-    output, unmapped = fix_refs(source, url_map.__getitem__)
+    with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
+        output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == 'foo <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a>'
     assert unmapped == []
 
@@ -252,7 +259,8 @@ def test_legacy_custom_optional_hover_reference() -> None:
     """Check that optional-hover HTML-based references are expanded and never reported missing."""
     url_map = {"ok": "ok.html#ok"}
     source = '<span data-autorefs-optional-hover="bar">foo</span> <span data-autorefs-optional-hover=ok>ok</span>'
-    output, unmapped = fix_refs(source, url_map.__getitem__)
+    with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
+        output, unmapped = fix_refs(source, url_map.__getitem__)
     assert (
         output
         == '<span title="bar">foo</span> <a class="autorefs autorefs-internal" title="ok" href="ok.html#ok">ok</a>'
@@ -276,7 +284,8 @@ def test_legacy_external_references() -> None:
     """Check that external references are marked as such."""
     url_map = {"example": "https://example.com"}
     source = '<span data-autorefs-optional="example">example</span>'
-    output, unmapped = fix_refs(source, url_map.__getitem__)
+    with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
+        output, unmapped = fix_refs(source, url_map.__getitem__)
     assert output == '<a class="autorefs autorefs-external" href="https://example.com">example</a>'
     assert unmapped == []
 
@@ -325,23 +334,29 @@ def test_register_markdown_anchors() -> None:
             [](){#alias9}
             ## Heading more2 {#heading-custom2}
 
+            [](){#aliasSame}
+            ## Same heading 1
+            [](){#aliasSame}
+            ## Same heading 2
+
             [](){#alias10}
             """,
         ),
     )
     assert plugin._url_map == {
-        "foo": "page#heading-foo",
-        "bar": "page#bar",
-        "alias1": "page#heading-bar",
-        "alias2": "page#heading-bar",
-        "alias3": "page#alias3",
-        "alias4": "page#heading-baz",
-        "alias5": "page#alias5",
-        "alias6": "page#alias6",
-        "alias7": "page#alias7",
-        "alias8": "page#alias8",
-        "alias9": "page#heading-custom2",
-        "alias10": "page#alias10",
+        "foo": ["page#heading-foo"],
+        "bar": ["page#bar"],
+        "alias1": ["page#heading-bar"],
+        "alias2": ["page#heading-bar"],
+        "alias3": ["page#alias3"],
+        "alias4": ["page#heading-baz"],
+        "alias5": ["page#alias5"],
+        "alias6": ["page#alias6"],
+        "alias7": ["page#alias7"],
+        "alias8": ["page#alias8"],
+        "alias9": ["page#heading-custom2"],
+        "alias10": ["page#alias10"],
+        "aliasSame": ["page#same-heading-1", "page#same-heading-2"],
     }
 
 
@@ -366,9 +381,9 @@ def test_register_markdown_anchors_with_admonition() -> None:
         ),
     )
     assert plugin._url_map == {
-        "alias1": "page#alias1",
-        "alias2": "page#heading-bar",
-        "alias3": "page#alias3",
+        "alias1": ["page#alias1"],
+        "alias2": ["page#heading-bar"],
+        "alias3": ["page#alias3"],
     }
 
 
@@ -376,7 +391,8 @@ def test_legacy_keep_data_attributes() -> None:
     """Keep HTML data attributes from autorefs spans."""
     url_map = {"example": "https://e.com"}
     source = '<span data-autorefs-optional="example" class="hi ho" data-foo data-bar="0">e</span>'
-    output, _ = fix_refs(source, url_map.__getitem__)
+    with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
+        output, _ = fix_refs(source, url_map.__getitem__)
     assert output == '<a class="autorefs autorefs-external hi ho" href="https://e.com" data-foo data-bar="0">e</a>'
 
 
