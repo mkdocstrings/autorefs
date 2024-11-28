@@ -5,16 +5,14 @@
 [![pypi version](https://img.shields.io/pypi/v/mkdocs-autorefs.svg)](https://pypi.org/project/mkdocs-autorefs/)
 [![conda version](https://img.shields.io/conda/vn/conda-forge/mkdocs-autorefs.svg)](https://anaconda.org/conda-forge/mkdocs-autorefs)
 [![gitpod](https://img.shields.io/badge/gitpod-workspace-708FCC.svg?style=flat)](https://gitpod.io/#https://github.com/mkdocstrings/autorefs)
-[![gitter](https://badges.gitter.im/join%20chat.svg)](https://app.gitter.im/#/room/#mkdocstrings/autorefs:gitter.im)
+[![gitter](https://badges.gitter.im/join%20chat.svg)](https://app.gitter.im/#/room/#autorefs:gitter.im)
 
 Automatically link across pages in MkDocs.
 
 ## Installation
 
-With `pip`:
-
 ```bash
-python3 -m pip install mkdocs-autorefs
+pip install mkdocs-autorefs
 ```
 
 ## Usage
@@ -22,8 +20,8 @@ python3 -m pip install mkdocs-autorefs
 ```yaml
 # mkdocs.yml
 plugins:
-  - search
-  - autorefs
+- search
+- autorefs
 ```
 
 In one of your Markdown files (e.g. `doc1.md`) create some headings:
@@ -97,11 +95,11 @@ The `attr_list` extension must be enabled for the Markdown anchors feature to wo
 ```yaml
 # mkdocs.yml
 plugins:
-  - search
-  - autorefs
+- search
+- autorefs
 
 markdown_extensions:
-  - attr_list
+- attr_list
 ```
 
 Now, you can add anchors to documents:
