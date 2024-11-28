@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from html import escape, unescape
 from html.parser import HTMLParser
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Match
+from typing import TYPE_CHECKING, Any, Callable, ClassVar
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
@@ -23,6 +23,7 @@ from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from re import Match
 
     from markdown import Markdown
 

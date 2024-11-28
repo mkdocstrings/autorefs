@@ -15,8 +15,8 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
-import sys
-from typing import TYPE_CHECKING, Any, Callable, Sequence
+from pathlib import PurePosixPath as URL  # noqa: N814
+from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import urlsplit
 
 from mkdocs.config.base import Config
@@ -27,6 +27,8 @@ from mkdocs.structure.pages import Page
 from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from mkdocs.config.defaults import MkDocsConfig
     from mkdocs.structure.pages import Page
     from mkdocs.structure.toc import AnchorLink
@@ -38,21 +40,6 @@ try:
 except ImportError:
     # TODO: remove once support for MkDocs <1.5 is dropped
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
-
-
-# YORE: EOL 3.8: Remove block.
-if sys.version_info < (3, 9):
-    from pathlib import PurePosixPath
-
-    class URL(PurePosixPath):  # noqa: D101
-        def is_relative_to(self, *args: Any) -> bool:  # noqa: D102
-            try:
-                self.relative_to(*args)
-            except ValueError:
-                return False
-            return True
-else:
-    from pathlib import PurePosixPath as URL  # noqa: N814
 
 
 class AutorefsConfig(Config):

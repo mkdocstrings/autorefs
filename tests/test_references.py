@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from textwrap import dedent
-from typing import Mapping
+from typing import TYPE_CHECKING
 
 import markdown
 import pytest
 
 from mkdocs_autorefs.plugin import AutorefsPlugin
 from mkdocs_autorefs.references import AutorefsExtension, AutorefsHookInterface, fix_refs, relative_url
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 @pytest.mark.parametrize(
