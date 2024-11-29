@@ -181,7 +181,7 @@ def test_missing_reference_with_markdown_text() -> None:
     run_references_test(
         url_map={"NotFoo": "foo.html#NotFoo"},
         source="[`Foo`][Foo]",
-        output="<p>[<code>Foo</code>][Foo]</p>",
+        output="<p>[<code>Foo</code>][]</p>",
         unmapped=[("Foo", None)],
     )
 
@@ -201,8 +201,8 @@ def test_missing_reference_with_markdown_implicit() -> None:
     run_references_test(
         url_map={"Foo-bar": "foo.html#Foo-bar"},
         source="[*Foo-bar*][] and [`Foo`-bar][]",
-        output="<p>[<em>Foo-bar</em>][*Foo-bar*] and [<code>Foo</code>-bar][]</p>",
-        unmapped=[("*Foo-bar*", None)],
+        output="<p>[<em>Foo-bar</em>][*Foo-bar*] and [<code>Foo</code>-bar][`Foo`-bar]</p>",
+        unmapped=[("*Foo-bar*", None), ("`Foo`-bar", None)],
     )
 
 
@@ -405,3 +405,81 @@ def test_keep_data_attributes() -> None:
     source = '<autoref optional identifier="example" class="hi ho" data-foo data-bar="0">e</autoref>'
     output, _ = fix_refs(source, url_map.__getitem__)
     assert output == '<a class="autorefs autorefs-external hi ho" href="https://e.com" data-foo data-bar="0">e</a>'
+
+
+@pytest.mark.parametrize(
+    ("markdown_ref", "exact_expected"),
+    [
+        ("[Foo][]", False),
+        ("[\\`Foo][]", False),
+        ("[\\`\\`Foo][]", False),
+        ("[\\`\\`Foo\\`][]", False),
+        ("[Foo\\`][]", False),
+        ("[Foo\\`\\`][]", False),
+        ("[\\`Foo\\`\\`][]", False),
+        ("[`Foo` `Bar`][]", False),
+        ("[Foo][Foo]", True),
+        ("[`Foo`][]", True),
+        ("[`Foo``Bar`][]", True),
+        ("[`Foo```Bar`][]", True),
+        ("[``Foo```Bar``][]", True),
+        ("[``Foo`Bar``][]", True),
+        ("[```Foo``Bar```][]", True),
+    ],
+)
+def test_mark_identifiers_as_exact(markdown_ref: str, exact_expected: bool) -> None:
+    """Mark code and explicit identifiers as exact (no `slug` attribute in autoref elements)."""
+    plugin = AutorefsPlugin()
+    md = markdown.Markdown(extensions=["attr_list", "toc", AutorefsExtension(plugin)])
+    plugin.current_page = "page"
+    output = md.convert(markdown_ref)
+    if exact_expected:
+        assert "slug=" not in output
+    else:
+        assert "slug=" in output
+
+
+def test_slugified_identifier_fallback() -> None:
+    """Fallback to the slugified identifier when no URL is found."""
+    run_references_test(
+        url_map={"hello-world": "https://e.com#a"},
+        source='<autoref identifier="Hello World" slug="hello-world">Hello World</autoref>',
+        output='<p><a class="autorefs autorefs-external" href="https://e.com#a">Hello World</a></p>',
+    )
+    run_references_test(
+        url_map={"foo-bar": "https://e.com#a"},
+        source="[*Foo*-bar][]",
+        output='<p><a class="autorefs autorefs-external" href="https://e.com#a"><em>Foo</em>-bar</a></p>',
+    )
+    run_references_test(
+        url_map={"foo-bar": "https://e.com#a"},
+        source="[`Foo`-bar][]",
+        output='<p><a class="autorefs autorefs-external" href="https://e.com#a"><code>Foo</code>-bar</a></p>',
+    )
+
+
+def test_no_fallback_for_exact_identifiers() -> None:
+    """Do not fallback to the slugified identifier for exact identifiers."""
+    run_references_test(
+        url_map={"hello-world": "https://e.com"},
+        source='<autoref identifier="Hello World"><code>Hello World</code></autoref>',
+        output="<p>[<code>Hello World</code>][]</p>",
+        unmapped=[("Hello World", None)],
+    )
+
+    run_references_test(
+        url_map={"hello-world": "https://e.com"},
+        source='<autoref identifier="Hello World">Hello World</autoref>',
+        output="<p>[Hello World][]</p>",
+        unmapped=[("Hello World", None)],
+    )
+
+
+def test_no_fallback_for_provided_identifiers() -> None:
+    """Do not slugify provided identifiers."""
+    run_references_test(
+        url_map={"hello-world": "foo.html#hello-world"},
+        source="[Hello][Hello world]",
+        output="<p>[Hello][Hello world]</p>",
+        unmapped=[("Hello world", None)],
+    )

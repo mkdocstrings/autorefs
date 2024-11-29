@@ -17,11 +17,13 @@ from xml.etree.ElementTree import Element
 import markupsafe
 from markdown.core import Markdown
 from markdown.extensions import Extension
+from markdown.extensions.toc import slugify
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
 from markdown.treeprocessors import Treeprocessor
 from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
     from re import Match
 
@@ -120,7 +122,6 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
 
     # Code based on
     # https://github.com/Python-Markdown/markdown/blob/8e7528fa5c98bf4652deb13206d6e6241d61630b/markdown/inlinepatterns.py#L780
-
     def handleMatch(self, m: Match[str], data: str) -> tuple[Element | None, int | None, int | None]:  # type: ignore[override]  # noqa: N802
         """Handle an element that matched.
 
@@ -135,19 +136,19 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
         if not handled:
             return None, None, None
 
-        identifier, end, handled = self.evalId(data, index, text)
+        identifier, slug, end, handled = self._eval_id(data, index, text)
         if not handled or identifier is None:
             return None, None, None
 
-        if re.search(r"[\x00-\x1f]", identifier):
+        if slug is None and re.search(r"[\x00-\x1f]", identifier):
             # Do nothing if the matched reference contains control characters (from 0 to 31 included).
             # Specifically `\x01` is used by Python-Markdown HTML stash when there's inline formatting,
             # but references with Markdown formatting are not possible anyway.
             return None, m.start(0), end
 
-        return self._make_tag(identifier, text), m.start(0), end
+        return self._make_tag(identifier, text, slug=slug), m.start(0), end
 
-    def evalId(self, data: str, index: int, text: str) -> tuple[str | None, int, bool]:  # noqa: N802 (parent's casing)
+    def _eval_id(self, data: str, index: int, text: str) -> tuple[str | None, str | None, int, bool]:
         """Evaluate the id portion of `[ref][id]`.
 
         If `[ref][]` use `[ref]`.
@@ -158,23 +159,28 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
             text: The text to use when no identifier.
 
         Returns:
-            A tuple containing the identifier, its end position, and whether it matched.
+            A tuple containing the identifier, its optional slug, its end position, and whether it matched.
         """
         m = self.RE_LINK.match(data, pos=index)
         if not m:
-            return None, index, False
+            return None, None, index, False
 
-        identifier = m.group(1)
-        if not identifier:
+        if identifier := m.group(1):
+            # An identifier was provided, match it exactly (later).
+            slug = None
+        else:
+            # Only a title was provided, use it as identifier.
             identifier = text
-            # Allow the entire content to be one placeholder, with the intent of catching things like [`Foo`][].
-            # It doesn't catch [*Foo*][] though, just due to the priority order.
-            # https://github.com/Python-Markdown/markdown/blob/1858c1b601ead62ed49646ae0d99298f41b1a271/markdown/inlinepatterns.py#L78
+
+            # Catch single stash entries, like the result of [`Foo`][].
             if match := INLINE_PLACEHOLDER_RE.fullmatch(identifier):
                 stashed_nodes: dict[str, Element | str] = self.md.treeprocessors["inline"].stashed_nodes  # type: ignore[attr-defined]
                 el = stashed_nodes.get(match[1])
                 if isinstance(el, Element) and el.tag == "code":
+                    # The title was wrapped in backticks, we only keep the content,
+                    # and tell autorefs to match the identifier exactly.
                     identifier = "".join(el.itertext())
+                    slug = None
                     # Special case: allow pymdownx.inlinehilite raw <code> snippets but strip them back to unhighlighted.
                     if match := HTML_PLACEHOLDER_RE.fullmatch(identifier):
                         stash_index = int(match.group(1))
@@ -183,9 +189,9 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
                         self.md.htmlStash.rawHtmlBlocks[stash_index] = escape(identifier)
 
         end = m.end(0)
-        return identifier, end, True
+        return identifier, slug, end, True
 
-    def _make_tag(self, identifier: str, text: str) -> Element:
+    def _make_tag(self, identifier: str, text: str, *, slug: str | None = None) -> Element:
         """Create a tag that can be matched by `AUTO_REF_RE`.
 
         Arguments:
@@ -201,6 +207,8 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
             el.attrib.update(self.hook.get_context().as_dict())
         el.set("identifier", identifier)
         el.text = text
+        if slug:
+            el.attrib["slug"] = slug
         return el
 
 
@@ -300,6 +308,7 @@ class _AutorefsAttrs(dict):
         "origin",
         "filepath",
         "lineno",
+        "slug",
     }
 
     @property
@@ -337,6 +346,15 @@ class _HTMLAttrsParser(HTMLParser):
 _html_attrs_parser = _HTMLAttrsParser()
 
 
+def _find_url(identifiers: Iterable[str], url_mapper: Callable[[str], str]) -> str:
+    for identifier in identifiers:
+        try:
+            return url_mapper(identifier)
+        except KeyError:
+            pass
+    raise KeyError(f"None of the identifiers {identifiers} were found")
+
+
 def fix_ref(
     url_mapper: Callable[[str], str],
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
@@ -363,11 +381,14 @@ def fix_ref(
         title = match["title"]
         attrs = _html_attrs_parser.parse(f"<a {match['attrs']}>")
         identifier: str = attrs["identifier"]
+        slug = attrs.get("slug", None)
         optional = "optional" in attrs
         hover = "hover" in attrs
 
+        identifiers = (identifier, slug) if slug else (identifier,)
+
         try:
-            url = url_mapper(unescape(identifier))
+            url = _find_url(identifiers, url_mapper)
         except KeyError:
             if optional:
                 if hover:
@@ -376,6 +397,8 @@ def fix_ref(
             unmapped.append((identifier, attrs.context))
             if title == identifier:
                 return f"[{identifier}][]"
+            if title == f"<code>{identifier}</code>" and not slug:
+                return f"[<code>{identifier}</code>][]"
             return f"[{title}][{identifier}]"
 
         parsed = urlsplit(url)
