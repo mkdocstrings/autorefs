@@ -51,13 +51,11 @@ Gitter = "https://gitter.im/mkdocstrings/autorefs"
 [project.entry-points."mkdocs.plugins"]
 autorefs = "mkdocs_autorefs.plugin:AutorefsPlugin"
 
-[tool.pdm]
-version = {source = "scm"}
+[tool.pdm.version]
+source = "call"
+getter = "scripts.get_version:get_version"
 
 [tool.pdm.build]
-package-dir = "src"
-editable-backend = "editables"
-
 # Include as much as possible in the source distribution, to help redistributors.
 excludes = ["**/.pytest_cache"]
 source-includes = [
@@ -82,9 +80,6 @@ data = [
 
 [dependency-groups]
 dev = [
-    # dev
-    "editables>=0.5",
-
     # maintenance
     "build>=1.2",
     "git-changelog>=2.5",
