@@ -342,7 +342,7 @@ def test_register_markdown_anchors() -> None:
             """,
         ),
     )
-    assert plugin._url_map == {
+    assert plugin._primary_url_map == {
         "foo": ["page#heading-foo"],
         "bar": ["page#bar"],
         "alias1": ["page#heading-bar"],
@@ -379,7 +379,7 @@ def test_register_markdown_anchors_with_admonition() -> None:
             """,
         ),
     )
-    assert plugin._url_map == {
+    assert plugin._primary_url_map == {
         "alias1": ["page#alias1"],
         "alias2": ["page#heading-bar"],
         "alias3": ["page#alias3"],

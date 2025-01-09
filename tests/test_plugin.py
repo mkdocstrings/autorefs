@@ -10,7 +10,7 @@ from mkdocs_autorefs.plugin import AutorefsPlugin
 def test_url_registration() -> None:
     """Check that URLs can be registered, then obtained."""
     plugin = AutorefsPlugin()
-    plugin.register_anchor(identifier="foo", page="foo1.html")
+    plugin.register_anchor(identifier="foo", page="foo1.html", primary=True)
     plugin.register_url(identifier="bar", url="https://example.org/bar.html")
 
     assert plugin.get_item_url("foo") == "foo1.html#foo"
@@ -22,7 +22,7 @@ def test_url_registration() -> None:
 def test_url_registration_with_from_url() -> None:
     """Check that URLs can be registered, then obtained, relative to a page."""
     plugin = AutorefsPlugin()
-    plugin.register_anchor(identifier="foo", page="foo1.html")
+    plugin.register_anchor(identifier="foo", page="foo1.html", primary=True)
     plugin.register_url(identifier="bar", url="https://example.org/bar.html")
 
     assert plugin.get_item_url("foo", from_url="a/b.html") == "../foo1.html#foo"
@@ -34,7 +34,7 @@ def test_url_registration_with_from_url() -> None:
 def test_url_registration_with_fallback() -> None:
     """Check that URLs can be registered, then obtained through a fallback."""
     plugin = AutorefsPlugin()
-    plugin.register_anchor(identifier="foo", page="foo1.html")
+    plugin.register_anchor(identifier="foo", page="foo1.html", primary=True)
     plugin.register_url(identifier="bar", url="https://example.org/bar.html")
 
     # URL map will be updated with baz -> foo1.html#foo
@@ -53,7 +53,7 @@ def test_url_registration_with_fallback() -> None:
 def test_dont_make_relative_urls_relative_again() -> None:
     """Check that URLs are not made relative more than once."""
     plugin = AutorefsPlugin()
-    plugin.register_anchor(identifier="foo.bar.baz", page="foo/bar/baz.html")
+    plugin.register_anchor(identifier="foo.bar.baz", page="foo/bar/baz.html", primary=True)
 
     for _ in range(2):
         assert (
@@ -83,4 +83,11 @@ def test_dont_make_relative_urls_relative_again() -> None:
 )
 def test_find_closest_url(base: str, urls: list[str], expected: str) -> None:
     """Find closest URLs given a list of URLs."""
-    assert AutorefsPlugin._get_closest_url(base, urls) == expected
+    assert AutorefsPlugin._get_closest_url(base, urls, "test") == expected
+
+
+def test_register_secondary_url() -> None:
+    """Test registering secondary URLs."""
+    plugin = AutorefsPlugin()
+    plugin.register_anchor(identifier="foo", page="foo.html", primary=False)
+    assert plugin._secondary_url_map == {"foo": ["foo.html#foo"]}

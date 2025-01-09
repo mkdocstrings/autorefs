@@ -81,23 +81,54 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     def __init__(self) -> None:
         """Initialize the object."""
         super().__init__()
-        self._url_map: dict[str, list[str]] = {}
+
+        # The plugin uses three URL maps, one for "primary" URLs, one for "secondary" URLs,
+        # and one for "absolute" URLs.
+        #
+        # - A primary URL is an identifier that links to a specific anchor on a page.
+        # - A secondary URL is an alias of an identifier that links to the same anchor as the identifier's primary URL.
+        #   Primary URLs with these aliases as identifiers may or may not be rendered later.
+        # - An absolute URL is an identifier that links to an external resource.
+        #   These URLs are typically registered by mkdocstrings when loading object inventories.
+        #
+        # For example, mkdocstrings registers a primary URL for each heading rendered in a page.
+        # Then, for each alias of this heading's identifier, it registers a secondary URL.
+        #
+        # We need to keep track of whether an identifier is primary or secondary,
+        # to give it precedence when resolving cross-references.
+        # We wouldn't want to log a warning if there is a single primary URL and one or more secondary URLs,
+        # instead we want to use the primary URL without any warning.
+        #
+        # - A single primary URL mapped to an identifer? Use it.
+        # - Multiple primary URLs mapped to an identifier? Use the first one, or closest one if configured as such.
+        # - No primary URL mapped to an identifier, but a secondary URL mapped? Use it.
+        # - Multiple secondary URLs mapped to an identifier? Use the first one, or closest one if configured as such.
+        # - No secondary URL mapped to an identifier? Try using absolute URLs
+        #   (typically registered by loading inventories in mkdocstrings).
+        #
+        # This logic unfolds in `_get_item_url`.
+        self._primary_url_map: dict[str, list[str]] = {}
+        self._secondary_url_map: dict[str, list[str]] = {}
         self._abs_url_map: dict[str, str] = {}
+
         self.get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
 
-    def register_anchor(self, page: str, identifier: str, anchor: str | None = None) -> None:
+    def register_anchor(self, page: str, identifier: str, anchor: str | None = None, *, primary: bool = True) -> None:
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
 
         Arguments:
             page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
-            identifier: The HTML anchor (without '#') as a string.
+            identifier: The identifier to register.
+            anchor: The anchor on the page, without `#`. If not provided, defaults to the identifier.
+            primary: Whether this anchor is the primary one for the identifier.
         """
         page_anchor = f"{page}#{anchor or identifier}"
-        if identifier in self._url_map:
-            if page_anchor not in self._url_map[identifier]:
-                self._url_map[identifier].append(page_anchor)
+        url_map = self._primary_url_map if primary else self._secondary_url_map
+        if identifier in url_map:
+            if page_anchor not in url_map[identifier]:
+                url_map[identifier].append(page_anchor)
         else:
-            self._url_map[identifier] = [page_anchor]
+            url_map[identifier] = [page_anchor]
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
@@ -109,12 +140,13 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self._abs_url_map[identifier] = url
 
     @staticmethod
-    def _get_closest_url(from_url: str, urls: list[str]) -> str:
+    def _get_closest_url(from_url: str, urls: list[str], qualifier: str) -> str:
         """Return the closest URL to the current page.
 
         Arguments:
             from_url: The URL of the base page, from which we link towards the targeted pages.
             urls: A list of URLs to choose from.
+            qualifier: The type of URLs we are choosing from.
 
         Returns:
             The closest URL to the current page.
@@ -130,8 +162,9 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
 
         if not candidates:
             log.warning(
-                "Could not find closest URL (from %s, candidates: %s). "
+                "Could not find closest %s URL (from %s, candidates: %s). "
                 "Make sure to use unique headings, identifiers, or Markdown anchors (see our docs).",
+                qualifier,
                 from_url,
                 urls,
             )
@@ -141,6 +174,12 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         log.debug("Closest URL found: %s (from %s, candidates: %s)", winner, from_url, urls)
         return winner
 
+    def _get_urls(self, identifier: str) -> tuple[list[str], str]:
+        try:
+            return self._primary_url_map[identifier], "primary"
+        except KeyError:
+            return self._secondary_url_map[identifier], "secondary"
+
     def _get_item_url(
         self,
         identifier: str,
@@ -148,7 +187,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         from_url: str | None = None,
     ) -> str:
         try:
-            urls = self._url_map[identifier]
+            urls, qualifier = self._get_urls(identifier)
         except KeyError:
             if identifier in self._abs_url_map:
                 return self._abs_url_map[identifier]
@@ -157,16 +196,17 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                 for new_identifier in new_identifiers:
                     with contextlib.suppress(KeyError):
                         url = self._get_item_url(new_identifier)
-                        self._url_map[identifier] = [url]
+                        self._secondary_url_map[identifier] = [url]
                         return url
             raise
 
         if len(urls) > 1:
             if self.config.resolve_closest and from_url is not None:
-                return self._get_closest_url(from_url, urls)
+                return self._get_closest_url(from_url, urls, qualifier)
             log.warning(
-                "Multiple URLs found for '%s': %s. "
+                "Multiple %s URLs found for '%s': %s. "
                 "Make sure to use unique headings, identifiers, or Markdown anchors (see our docs).",
+                qualifier,
                 identifier,
                 urls,
             )
@@ -252,13 +292,13 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     def map_urls(self, base_url: str, anchor: AnchorLink) -> None:
         """Recurse on every anchor to map its ID to its absolute URL.
 
-        This method populates `self.url_map` by side-effect.
+        This method populates `self._primary_url_map` by side-effect.
 
         Arguments:
             base_url: The base URL to use as a prefix for each anchor's relative URL.
             anchor: The anchor to process and to recurse on.
         """
-        self.register_anchor(base_url, anchor.id)
+        self.register_anchor(base_url, anchor.id, primary=True)
         for child in anchor.children:
             self.map_urls(base_url, child)
 

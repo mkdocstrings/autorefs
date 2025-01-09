@@ -506,7 +506,7 @@ class _PendingAnchors:
 
     def flush(self, alias_to: str | None = None) -> None:
         for anchor in self.anchors:
-            self.plugin.register_anchor(self.current_page, anchor, alias_to)
+            self.plugin.register_anchor(self.current_page, anchor, alias_to, primary=True)
         self.anchors.clear()
 
 
