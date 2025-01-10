@@ -141,12 +141,24 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
             return None, None, None
 
         if slug is None and re.search(r"[\x00-\x1f]", identifier):
-            # Do nothing if the matched reference contains control characters (from 0 to 31 included).
-            # Specifically `\x01` is used by Python-Markdown HTML stash when there's inline formatting,
-            # but references with Markdown formatting are not possible anyway.
+            # Do nothing if the matched reference still contains control characters (from 0 to 31 included)
+            # that weren't unstashed when trying to compute a slug of the title.
             return None, m.start(0), end
 
         return self._make_tag(identifier, text, slug=slug), m.start(0), end
+
+    def _unstash(self, identifier: str) -> str:
+        stashed_nodes: dict[str, Element | str] = self.md.treeprocessors["inline"].stashed_nodes  # type: ignore[attr-defined]
+
+        def _repl(match: Match) -> str:
+            el = stashed_nodes.get(match[1])
+            if isinstance(el, Element):
+                return f"`{''.join(el.itertext())}`"
+            if el == "\x0296\x03":
+                return "`"
+            return str(el)
+
+        return INLINE_PLACEHOLDER_RE.sub(_repl, identifier)
 
     def _eval_id(self, data: str, index: int, text: str) -> tuple[str | None, str | None, int, bool]:
         """Evaluate the id portion of `[ref][id]`.
@@ -187,6 +199,12 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
                         html = self.md.htmlStash.rawHtmlBlocks[stash_index]
                         identifier = Markup(html).striptags()
                         self.md.htmlStash.rawHtmlBlocks[stash_index] = escape(identifier)
+
+            # In any other case, unstash the title and slugify it.
+            # Examples: ``[`Foo` and `Bar`]``, `[The *Foo*][]`.
+            else:
+                identifier = self._unstash(identifier)
+                slug = slugify(identifier, separator="-")
 
         end = m.end(0)
         return identifier, slug, end, True
