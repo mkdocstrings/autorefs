@@ -18,6 +18,7 @@ import logging
 from pathlib import PurePosixPath as URL  # noqa: N814
 from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import urlsplit
+from warnings import warn
 
 from mkdocs.config.base import Config
 from mkdocs.config.config_options import Type
@@ -110,8 +111,26 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self._primary_url_map: dict[str, list[str]] = {}
         self._secondary_url_map: dict[str, list[str]] = {}
         self._abs_url_map: dict[str, str] = {}
+        # YORE: Bump 2: Remove line.
+        self._get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
 
-        self.get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
+    # YORE: Bump 2: Remove block.
+    @property
+    def get_fallback_anchor(self) -> Callable[[str], tuple[str, ...]] | None:
+        """Fallback anchors getter."""
+        return self._get_fallback_anchor
+
+    # YORE: Bump 2: Remove block.
+    @get_fallback_anchor.setter
+    def get_fallback_anchor(self, value: Callable[[str], tuple[str, ...]] | None) -> None:
+        """Fallback anchors setter."""
+        self._get_fallback_anchor = value
+        if value is not None:
+            warn(
+                "Setting a fallback anchor function is deprecated and will be removed in a future release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
     def register_anchor(self, page: str, identifier: str, anchor: str | None = None, *, primary: bool = True) -> None:
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
@@ -183,12 +202,14 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     def _get_item_url(
         self,
         identifier: str,
-        fallback: Callable[[str], Sequence[str]] | None = None,
         from_url: str | None = None,
+        # YORE: Bump 2: Remove line.
+        fallback: Callable[[str], Sequence[str]] | None = None,
     ) -> str:
         try:
             urls, qualifier = self._get_urls(identifier)
         except KeyError:
+            # YORE: Bump 2: Replace block with line 2.
             if identifier in self._abs_url_map:
                 return self._abs_url_map[identifier]
             if fallback:
@@ -216,6 +237,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self,
         identifier: str,
         from_url: str | None = None,
+        # YORE: Bump 2: Remove line.
         fallback: Callable[[str], Sequence[str]] | None = None,
     ) -> str:
         """Return a site-relative URL with anchor to the identifier, if it's present anywhere.
@@ -223,12 +245,12 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         Arguments:
             identifier: The anchor (without '#').
             from_url: The URL of the base page, from which we link towards the targeted pages.
-            fallback: An optional function to suggest alternative anchors to try on failure.
 
         Returns:
             A site-relative URL.
         """
-        url = self._get_item_url(identifier, fallback, from_url)
+        # YORE: Bump 2: Replace `, fallback` with `` within line.
+        url = self._get_item_url(identifier, from_url, fallback)
         if from_url is not None:
             parsed = urlsplit(url)
             if not parsed.scheme and not parsed.netloc:
@@ -325,6 +347,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         """
         log.debug("Fixing references in page %s", page.file.src_path)
 
+        # YORE: Bump 2: Replace `, fallback=self.get_fallback_anchor` with `` within line.
         url_mapper = functools.partial(self.get_item_url, from_url=page.url, fallback=self.get_fallback_anchor)
         fixed_output, unmapped = fix_refs(output, url_mapper, _legacy_refs=self.legacy_refs)
 
