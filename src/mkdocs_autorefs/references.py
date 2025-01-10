@@ -391,6 +391,7 @@ def fix_ref(
             url = _find_url(identifiers, url_mapper)
         except KeyError:
             if optional:
+                log.debug("Unresolved optional cross-reference: %s", identifier)
                 if hover:
                     return f'<span title="{identifier}">{title}</span>'
                 return title
