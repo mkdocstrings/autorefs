@@ -101,6 +101,7 @@ def test_warn_multiple_urls(caplog: pytest.LogCaptureFixture) -> None:
     plugin.register_anchor(identifier="foo", page="foo.html", primary=True)
     plugin.register_anchor(identifier="foo", page="bar.html", primary=True)
     url_mapper = functools.partial(plugin.get_item_url, from_url="/hello")
+    # YORE: Bump 2: Replace `, _legacy_refs=False` with `` within line.
     fix_refs('<autoref identifier="foo">Foo</autoref>', url_mapper, _legacy_refs=False)
     assert "Multiple primary URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" in caplog.text
 
@@ -113,5 +114,6 @@ def test_use_closest_url(caplog: pytest.LogCaptureFixture) -> None:
     plugin.register_anchor(identifier="foo", page="foo.html", primary=True)
     plugin.register_anchor(identifier="foo", page="bar.html", primary=True)
     url_mapper = functools.partial(plugin.get_item_url, from_url="/hello")
+    # YORE: Bump 2: Replace `, _legacy_refs=False` with `` within line.
     fix_refs('<autoref identifier="foo">Foo</autoref>', url_mapper, _legacy_refs=False)
     assert "Multiple primary URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" not in caplog.text

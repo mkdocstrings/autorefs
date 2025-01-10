@@ -77,6 +77,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
 
     scan_toc: bool = True
     current_page: str | None = None
+    # YORE: Bump 2: Remove line.
     legacy_refs: bool = True
 
     def __init__(self) -> None:
@@ -349,6 +350,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
 
         # YORE: Bump 2: Replace `, fallback=self.get_fallback_anchor` with `` within line.
         url_mapper = functools.partial(self.get_item_url, from_url=page.url, fallback=self.get_fallback_anchor)
+        # YORE: Bump 2: Replace `, _legacy_refs=self.legacy_refs` with `` within line.
         fixed_output, unmapped = fix_refs(output, url_mapper, _legacy_refs=self.legacy_refs)
 
         if unmapped and log.isEnabledFor(logging.WARNING):

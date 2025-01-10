@@ -220,6 +220,7 @@ def test_reference_with_markup() -> None:
     )
 
 
+# YORE: Bump 2: Remove block.
 def test_legacy_custom_required_reference() -> None:
     """Check that external HTML-based references are expanded or reported missing."""
     with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
@@ -241,6 +242,7 @@ def test_custom_required_reference() -> None:
     )
 
 
+# YORE: Bump 2: Remove block.
 def test_legacy_custom_optional_reference() -> None:
     """Check that optional HTML-based references are expanded and never reported missing."""
     with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
@@ -260,6 +262,7 @@ def test_custom_optional_reference() -> None:
     )
 
 
+# YORE: Bump 2: Remove block.
 def test_legacy_custom_optional_hover_reference() -> None:
     """Check that optional-hover HTML-based references are expanded and never reported missing."""
     with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
@@ -279,6 +282,7 @@ def test_custom_optional_hover_reference() -> None:
     )
 
 
+# YORE: Bump 2: Remove block.
 def test_legacy_external_references() -> None:
     """Check that external references are marked as such."""
     with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):
@@ -386,6 +390,7 @@ def test_register_markdown_anchors_with_admonition() -> None:
     }
 
 
+# YORE: Bump 2: Remove block.
 def test_legacy_keep_data_attributes() -> None:
     """Keep HTML data attributes from autorefs spans."""
     with pytest.warns(DeprecationWarning, match="`span` elements are deprecated"):

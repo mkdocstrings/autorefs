@@ -434,12 +434,11 @@ def fix_ref(
     return inner
 
 
-# YORE: Bump 2: Replace `, *, _legacy_refs: bool = True` with `` within line.
 def fix_refs(
     html: str,
     url_mapper: Callable[[str], str],
-    *,
-    _legacy_refs: bool = True,
+    # YORE: Bump 2: Remove line.
+    _legacy_refs: bool = True,  # noqa: FBT001, FBT002
 ) -> tuple[str, list[tuple[str, AutorefsHookInterface.Context | None]]]:
     """Fix all references in the given HTML text.
 
