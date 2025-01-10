@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import functools
+
 import pytest
 
-from mkdocs_autorefs.plugin import AutorefsPlugin
+from mkdocs_autorefs.plugin import AutorefsConfig, AutorefsPlugin
+from mkdocs_autorefs.references import fix_refs
 
 
 def test_url_registration() -> None:
@@ -91,3 +94,26 @@ def test_register_secondary_url() -> None:
     plugin = AutorefsPlugin()
     plugin.register_anchor(identifier="foo", page="foo.html", primary=False)
     assert plugin._secondary_url_map == {"foo": ["foo.html#foo"]}
+
+
+def test_warn_multiple_urls(caplog: pytest.LogCaptureFixture) -> None:
+    """Warn when multiple URLs are found for the same identifier."""
+    plugin = AutorefsPlugin()
+    plugin.config = AutorefsConfig()
+    plugin.register_anchor(identifier="foo", page="foo.html", primary=True)
+    plugin.register_anchor(identifier="foo", page="bar.html", primary=True)
+    url_mapper = functools.partial(plugin.get_item_url, from_url="/hello")
+    fix_refs('<autoref identifier="foo">Foo</autoref>', url_mapper, _legacy_refs=False)
+    assert "Multiple primary URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" in caplog.text
+
+
+def test_use_closest_url(caplog: pytest.LogCaptureFixture) -> None:
+    """Use the closest URL when multiple URLs are found for the same identifier."""
+    plugin = AutorefsPlugin()
+    plugin.config = AutorefsConfig()
+    plugin.config.resolve_closest = True
+    plugin.register_anchor(identifier="foo", page="foo.html", primary=True)
+    plugin.register_anchor(identifier="foo", page="bar.html", primary=True)
+    url_mapper = functools.partial(plugin.get_item_url, from_url="/hello")
+    fix_refs('<autoref identifier="foo">Foo</autoref>', url_mapper, _legacy_refs=False)
+    assert "Multiple primary URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" not in caplog.text
