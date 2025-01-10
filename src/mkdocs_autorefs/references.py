@@ -14,13 +14,13 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
-import markupsafe
 from markdown.core import Markdown
 from markdown.extensions import Extension
 from markdown.extensions.toc import slugify
 from markdown.inlinepatterns import REFERENCE_RE, ReferenceInlineProcessor
 from markdown.treeprocessors import Treeprocessor
 from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
+from markupsafe import Markup
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -185,7 +185,7 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
                     if match := HTML_PLACEHOLDER_RE.fullmatch(identifier):
                         stash_index = int(match.group(1))
                         html = self.md.htmlStash.rawHtmlBlocks[stash_index]
-                        identifier = markupsafe.Markup(html).striptags()
+                        identifier = Markup(html).striptags()
                         self.md.htmlStash.rawHtmlBlocks[stash_index] = escape(identifier)
 
         end = m.end(0)
