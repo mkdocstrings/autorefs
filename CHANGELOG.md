@@ -5,6 +5,28 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.3.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.3.0) - 2025-01-12
+
+<small>[Compare with 1.2.0](https://github.com/mkdocstrings/autorefs/compare/1.2.0...1.3.0)</small>
+
+### Build
+
+- Drop support for Python 3.8 ([ee3eaad](https://github.com/mkdocstrings/autorefs/commit/ee3eaadac59331b883f83c6cd9aa0ac4ea3707b5) by Timothée Mazzucotelli).
+
+### Features
+
+- Handle inline references with markup within them ([54a02a7](https://github.com/mkdocstrings/autorefs/commit/54a02a7a61cdeaed0df3f98f49be4c36d07c0b8e) by Timothée Mazzucotelli). [Follow-up-of-issue-58](https://github.com/mkdocstrings/autorefs/issues/58)
+- Separate URLs in two groups, primary and secondary ([559c723](https://github.com/mkdocstrings/autorefs/commit/559c723203d3f73040b1005ab3762a4a7bf8e133) by Timothée Mazzucotelli). [Related-to-issue-61](https://github.com/mkdocstrings/autorefs/issues/61)
+
+### Bug Fixes
+
+- Fallback to slugified title as id for non-exact, non-code references (`[Hello World][]` -> `[hello-world][]`) ([13428f1](https://github.com/mkdocstrings/autorefs/commit/13428f15d72d3fd473dcd16da94abcc3c32465e9) by Timothée Mazzucotelli). [Issue-58](https://github.com/mkdocstrings/autorefs/issues/58)
+
+### Code Refactoring
+
+- Deprecate fallback mechanism ([5e89cd8](https://github.com/mkdocstrings/autorefs/commit/5e89cd89f56f611666d84f95c4de0e184aa98437) by Timothée Mazzucotelli). [Issue-61](https://github.com/mkdocstrings/autorefs/issues/61)
+- Log a debug message for unresolved optional references ([9e990d7](https://github.com/mkdocstrings/autorefs/commit/9e990d79a348f06c3d031c6759814acc32449e15) by Timothée Mazzucotelli).
+
 ## [1.2.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.2.0) - 2024-09-01
 
 <small>[Compare with 1.1.0](https://github.com/mkdocstrings/autorefs/compare/1.1.0...1.2.0)</small>
