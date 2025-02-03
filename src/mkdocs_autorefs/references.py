@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from html import escape, unescape
 from html.parser import HTMLParser
-from typing import TYPE_CHECKING, Any, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
@@ -23,7 +23,7 @@ from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 from markupsafe import Markup
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
     from pathlib import Path
     from re import Match
 
@@ -38,6 +38,9 @@ try:
 except ImportError:
     # TODO: remove once support for MkDocs <1.5 is dropped
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
+
+
+URLAndTitle = tuple[str, Optional[str]]
 
 
 # YORE: Bump 2: Remove block.
@@ -62,7 +65,7 @@ AUTOREF_RE = re.compile(r"<autoref (?P<attrs>.*?)>(?P<title>.*?)</autoref>", fla
 """The autoref HTML tag regular expression.
 
 A regular expression to match mkdocs-autorefs' special reference markers
-in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page].
+in the [`on_env` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_env].
 """
 
 
@@ -258,7 +261,7 @@ def relative_url(url_a: str, url_b: str) -> str:
 
 # YORE: Bump 2: Remove block.
 def _legacy_fix_ref(
-    url_mapper: Callable[[str], str],
+    url_mapper: Callable[[str], URLAndTitle],
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
 ) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
@@ -287,7 +290,7 @@ def _legacy_fix_ref(
         classes = (match["class"] or "").strip('"').split()
 
         try:
-            url = url_mapper(unescape(identifier))
+            url, _ = url_mapper(unescape(identifier))
         except KeyError:
             if kind == "autorefs-optional":
                 return title
@@ -327,6 +330,8 @@ class _AutorefsAttrs(dict):
         "filepath",
         "lineno",
         "slug",
+        "backlink-type",
+        "backlink-anchor",
     }
 
     @property
@@ -364,7 +369,7 @@ class _HTMLAttrsParser(HTMLParser):
 _html_attrs_parser = _HTMLAttrsParser()
 
 
-def _find_url(identifiers: Iterable[str], url_mapper: Callable[[str], str]) -> str:
+def _find_url(identifiers: Iterable[str], url_mapper: Callable[[str], URLAndTitle]) -> URLAndTitle:
     for identifier in identifiers:
         try:
             return url_mapper(identifier)
@@ -373,9 +378,25 @@ def _find_url(identifiers: Iterable[str], url_mapper: Callable[[str], str]) -> s
     raise KeyError(f"None of the identifiers {identifiers} were found")
 
 
+def _find_backlinks(html: str) -> Iterator[tuple[str, str, str]]:
+    for match in AUTOREF_RE.finditer(html):
+        attrs = _html_attrs_parser.parse(f"<a {match['attrs']}>")
+        if (backlink_type := attrs.get("backlink-type")) and (backlink_anchor := attrs.get("backlink-anchor")):
+            yield attrs["identifier"], backlink_type, backlink_anchor
+
+
+def _tooltip(identifier: str, title: str | None) -> str:
+    if title:
+        if title == identifier:
+            return title
+        return f"{title} ({identifier})"
+    return identifier
+
+
 def fix_ref(
-    url_mapper: Callable[[str], str],
+    url_mapper: Callable[[str], URLAndTitle],
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
+    record_backlink: Callable[[str, str, str], None] | None = None,
 ) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
@@ -389,6 +410,7 @@ def fix_ref(
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
         unmapped: A list to store unmapped identifiers.
+        record_backlink: A callable to record backlinks.
 
     Returns:
         The actual function accepting a [`Match` object](https://docs.python.org/3/library/re.html#match-objects)
@@ -405,8 +427,11 @@ def fix_ref(
 
         identifiers = (identifier, slug) if slug else (identifier,)
 
+        if record_backlink and (backlink_type := attrs.get("backlink-type")) and (backlink_anchor := attrs.get("backlink-anchor")):
+            record_backlink(identifier, backlink_type, backlink_anchor)
+
         try:
-            url = _find_url(identifiers, url_mapper)
+            url, original_title = _find_url(identifiers, url_mapper)
         except KeyError:
             if optional:
                 log.debug("Unresolved optional cross-reference: %s", identifier)
@@ -428,7 +453,7 @@ def fix_ref(
         if remaining := attrs.remaining:
             remaining = f" {remaining}"
         if optional and hover:
-            return f'<a class="{class_attr}" title="{identifier}" href="{escape(url)}"{remaining}>{title}</a>'
+            return f'<a class="{class_attr}" href="{escape(url)}"{remaining}>{title}</a>'
         return f'<a class="{class_attr}" href="{escape(url)}"{remaining}>{title}</a>'
 
     return inner
@@ -436,7 +461,10 @@ def fix_ref(
 
 def fix_refs(
     html: str,
-    url_mapper: Callable[[str], str],
+    url_mapper: Callable[[str], URLAndTitle],
+    # YORE: Bump 2: Remove line.
+    *,
+    record_backlink: Callable[[str, str, str], None] | None = None,
     # YORE: Bump 2: Remove line.
     _legacy_refs: bool = True,  # noqa: FBT001, FBT002
 ) -> tuple[str, list[tuple[str, AutorefsHookInterface.Context | None]]]:
@@ -446,6 +474,7 @@ def fix_refs(
         html: The text to fix.
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
+        record_backlink: A callable to record backlinks.
 
     Returns:
         The fixed HTML, and a list of unmapped identifiers (string and optional context).
@@ -477,11 +506,11 @@ class AnchorScannerTreeProcessor(Treeprocessor):
 
     def run(self, root: Element) -> None:  # noqa: D102
         if self.plugin.current_page is not None:
-            pending_anchors = _PendingAnchors(self.plugin, self.plugin.current_page)
+            pending_anchors = _PendingAnchors(self.plugin)
             self._scan_anchors(root, pending_anchors)
             pending_anchors.flush()
 
-    def _scan_anchors(self, parent: Element, pending_anchors: _PendingAnchors) -> None:
+    def _scan_anchors(self, parent: Element, pending_anchors: _PendingAnchors, last_heading: str | None = None) -> None:
         for el in parent:
             if el.tag == "a":
                 # We found an anchor. Record its id if it has one.
@@ -490,23 +519,24 @@ class AnchorScannerTreeProcessor(Treeprocessor):
                 # If the element has text or a link, it's not an alias.
                 # Non-whitespace text after the element interrupts the chain, aliases can't apply.
                 if el.text or el.get("href") or (el.tail and el.tail.strip()):
-                    pending_anchors.flush()
+                    pending_anchors.flush(title=last_heading)
 
             elif el.tag == "p":
                 # A `p` tag is a no-op for our purposes, just recurse into it in the context
                 # of the current collection of anchors.
-                self._scan_anchors(el, pending_anchors)
+                self._scan_anchors(el, pending_anchors, last_heading)
                 # Non-whitespace text after the element interrupts the chain, aliases can't apply.
                 if el.tail and el.tail.strip():
                     pending_anchors.flush()
 
             elif el.tag in self._htags:
                 # If the element is a heading, that turns the pending anchors into aliases.
-                pending_anchors.flush(el.get("id"))
+                last_heading = el.text
+                pending_anchors.flush(el.get("id"), title=last_heading)
 
             else:
                 # But if it's some other interruption, flush anchors anyway as non-aliases.
-                pending_anchors.flush()
+                pending_anchors.flush(title=last_heading)
                 # Recurse into sub-elements, in a *separate* context.
                 self.run(el)
 
@@ -514,18 +544,63 @@ class AnchorScannerTreeProcessor(Treeprocessor):
 class _PendingAnchors:
     """A collection of HTML anchors that may or may not become aliased to an upcoming heading."""
 
-    def __init__(self, plugin: AutorefsPlugin, current_page: str):
+    def __init__(self, plugin: AutorefsPlugin):
         self.plugin = plugin
-        self.current_page = current_page
         self.anchors: list[str] = []
 
     def append(self, anchor: str) -> None:
         self.anchors.append(anchor)
 
-    def flush(self, alias_to: str | None = None) -> None:
+    def flush(self, alias_to: str | None = None, title: str | None = None) -> None:
         for anchor in self.anchors:
-            self.plugin.register_anchor(self.current_page, anchor, alias_to, primary=True)
+            self.plugin.register_anchor(anchor, alias_to, title=title, primary=True)
         self.anchors.clear()
+
+
+class BacklinksTreeProcessor(Treeprocessor):
+    """Enhance autorefs with `backlink-type` and `backlink-anchor` attributes.
+
+    These attributes are then used later to register backlinks.
+    """
+
+    name: str = "mkdocs-autorefs-backlinks"
+    initial_id: str | None = None
+    _htags: ClassVar[set[str]] = {"h1", "h2", "h3", "h4", "h5", "h6"}
+
+    def __init__(self, plugin: AutorefsPlugin, md: Markdown | None = None) -> None:
+        """Initialize the tree processor.
+
+        Parameters:
+            plugin: A reference to the autorefs plugin, to use its `register_anchor` method.
+        """
+        super().__init__(md)
+        self.plugin = plugin
+        self.last_markdown_anchor: str | None = None
+        self.last_heading_id: str | None = None
+
+    def run(self, root: Element) -> None:  # noqa: D102
+        if self.plugin.current_page is not None:
+            self.last_heading_id = self.initial_id
+            self._enhance_autorefs(root)
+
+    def _enhance_autorefs(self, parent: Element) -> None:
+        for el in parent:
+            if el.tag == "a":  # Markdown anchor.
+                if not (el.text or el.get("href") or (el.tail and el.tail.strip())) and (anchor_id := el.get("id")):
+                    self.last_markdown_anchor = anchor_id
+            elif el.tag in self._htags:  # Heading.
+                if self.last_markdown_anchor:
+                    self.last_heading_id = self.last_markdown_anchor
+                    self.last_markdown_anchor = None
+                else:
+                    self.last_heading_id = el.get("id")
+            elif el.tag == "autoref":
+                if "backlink-type" not in el.attrib:
+                    el.set("backlink-type", "referenced-by")
+                if "backlink-anchor" not in el.attrib and self.last_heading_id:
+                    el.set("backlink-anchor", self.last_heading_id)
+            else:
+                self._enhance_autorefs(el)
 
 
 @lru_cache
@@ -551,7 +626,7 @@ class AutorefsExtension(Extension):
 
         Parameters:
             plugin: An optional reference to the autorefs plugin (to pass it to the anchor scanner tree processor).
-            **kwargs: Keyword arguments passed to the [base constructor][markdown.extensions.Extension].
+            **kwargs: Keyword arguments passed to the [base constructor][markdown.Extension].
         """
         super().__init__(**kwargs)
         self.plugin = plugin
@@ -571,10 +646,16 @@ class AutorefsExtension(Extension):
             AutorefsInlineProcessor.name,
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
-        if self.plugin is not None and self.plugin.scan_toc and "attr_list" in md.treeprocessors:
-            _log_enabling_markdown_anchors()
+        if self.plugin is not None:
+            if self.plugin.scan_toc and "attr_list" in md.treeprocessors:
+                _log_enabling_markdown_anchors()
+                md.treeprocessors.register(
+                    AnchorScannerTreeProcessor(self.plugin, md),
+                    AnchorScannerTreeProcessor.name,
+                    priority=0,
+                )
             md.treeprocessors.register(
-                AnchorScannerTreeProcessor(self.plugin, md),
-                AnchorScannerTreeProcessor.name,
+                BacklinksTreeProcessor(self.plugin, md),
+                BacklinksTreeProcessor.name,
                 priority=0,
             )

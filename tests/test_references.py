@@ -9,7 +9,7 @@ import markdown
 import pytest
 
 from mkdocs_autorefs.plugin import AutorefsPlugin
-from mkdocs_autorefs.references import AutorefsExtension, AutorefsHookInterface, fix_refs, relative_url
+from mkdocs_autorefs.references import AutorefsExtension, AutorefsHookInterface, URLAndTitle, fix_refs, relative_url
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -65,8 +65,8 @@ def run_references_test(
     md = markdown.Markdown(extensions=[AutorefsExtension(), *extensions], extension_configs=extensions)
     content = md.convert(source)
 
-    def url_mapper(identifier: str) -> str:
-        return relative_url(from_url, url_map[identifier])
+    def url_mapper(identifier: str) -> URLAndTitle:
+        return relative_url(from_url, url_map[identifier]), None
 
     actual_output, actual_unmapped = fix_refs(content, url_mapper)
     assert actual_output == output
@@ -347,19 +347,19 @@ def test_register_markdown_anchors() -> None:
         ),
     )
     assert plugin._primary_url_map == {
-        "foo": ["page#heading-foo"],
-        "bar": ["page#bar"],
-        "alias1": ["page#heading-bar"],
-        "alias2": ["page#heading-bar"],
-        "alias3": ["page#alias3"],
-        "alias4": ["page#heading-baz"],
-        "alias5": ["page#alias5"],
-        "alias6": ["page#alias6"],
-        "alias7": ["page#alias7"],
-        "alias8": ["page#alias8"],
-        "alias9": ["page#heading-custom2"],
-        "alias10": ["page#alias10"],
-        "aliasSame": ["page#same-heading-1", "page#same-heading-2"],
+        "foo": {"page#heading-foo": "Heading foo"},
+        "bar": {"page#bar": None},
+        "alias1": {"page#heading-bar": "Heading bar"},
+        "alias2": {"page#heading-bar": "Heading bar"},
+        "alias3": {"page#alias3": None},
+        "alias4": {"page#heading-baz": "Heading baz"},
+        "alias5": {"page#alias5": None},
+        "alias6": {"page#alias6": None},
+        "alias7": {"page#alias7": None},
+        "alias8": {"page#alias8": None},
+        "alias9": {"page#heading-custom2": "Heading more2"},
+        "alias10": {"page#alias10": None},
+        "aliasSame": {"page#same-heading-1": "Same heading 1", "page#same-heading-2": "Same heading 2"},
     }
 
 
@@ -384,9 +384,9 @@ def test_register_markdown_anchors_with_admonition() -> None:
         ),
     )
     assert plugin._primary_url_map == {
-        "alias1": ["page#alias1"],
-        "alias2": ["page#heading-bar"],
-        "alias3": ["page#alias3"],
+        "alias1": {"page#alias1": None},
+        "alias2": {"page#heading-bar": "Heading bar"},
+        "alias3": {"page#alias3": None},
     }
 
 
