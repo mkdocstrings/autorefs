@@ -480,7 +480,7 @@ def fix_refs(
         The fixed HTML, and a list of unmapped identifiers (string and optional context).
     """
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]] = []
-    html = AUTOREF_RE.sub(fix_ref(url_mapper, unmapped), html)
+    html = AUTOREF_RE.sub(fix_ref(url_mapper, unmapped, record_backlink), html)
 
     # YORE: Bump 2: Remove block.
     if _legacy_refs:
@@ -587,13 +587,9 @@ class BacklinksTreeProcessor(Treeprocessor):
         for el in parent:
             if el.tag == "a":  # Markdown anchor.
                 if not (el.text or el.get("href") or (el.tail and el.tail.strip())) and (anchor_id := el.get("id")):
-                    self.last_markdown_anchor = anchor_id
+                    self.last_heading_id = anchor_id
             elif el.tag in self._htags:  # Heading.
-                if self.last_markdown_anchor:
-                    self.last_heading_id = self.last_markdown_anchor
-                    self.last_markdown_anchor = None
-                else:
-                    self.last_heading_id = el.get("id")
+               self.last_heading_id = el.get("id")
             elif el.tag == "autoref":
                 if "backlink-type" not in el.attrib:
                     el.set("backlink-type", "referenced-by")

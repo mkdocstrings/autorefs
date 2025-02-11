@@ -13,6 +13,7 @@ and fixes them using the previously stored identifier-URL mapping.
 from __future__ import annotations
 
 import contextlib
+from dataclasses import dataclass
 import functools
 import logging
 from collections import defaultdict
@@ -47,14 +48,16 @@ except ImportError:
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 
-# TODO: BACKLINKS: Record URLs directly. It's wrong to record ids and use them later
-# to fetch all associated URLs: not all these URLs link to the cross-ref'd object.
-# Also, don't store URLs + titles, only store URLs in maps, and store titles in a separate dict.
-# Also also, backlinks should be fetched for all aliases of a given identifier,
-# not just for this specific identifier. For example, mkdocstrings-python will create
-# an autoref for a parameter default value with `used-by` type and `object.canonical.path` as id,
-# But if we don't render the object with this canonical path but instead `object.path`,
-# then we won't find the backlinks for it.
+@dataclass(order=True)
+class BacklinkCrumb:
+    title: str
+    url: str
+
+
+@dataclass(order=True)
+class Backlink:
+    crumbs: list[BacklinkCrumb]
+
 
 class AutorefsConfig(Config):
     """Configuration options for the `autorefs` plugin."""
@@ -125,6 +128,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self._primary_url_map: dict[str, list[str]] = {}
         self._secondary_url_map: dict[str, list[str]] = {}
         self._title_map: dict[str, str] = {}
+        self._backlink_page_map: dict[str, Page] = {}
         self._abs_url_map: dict[str, str] = {}
         self._backlinks: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
         # YORE: Bump 2: Remove line.
@@ -160,7 +164,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         if identifier in self._primary_url_map or identifier in self._secondary_url_map:
             self._backlinks[identifier][backlink_type].add(f"{page_url}#{backlink_anchor}")
 
-    def get_backlinks(self, *identifiers: str, from_url: str) -> dict[str, set[URLAndTitle]]:
+    def get_backlinks(self, *identifiers: str, from_url: str) -> dict[str, list[Backlink]]:
         """Return the backlinks to an identifier relative to the given URL.
 
         Arguments:
@@ -168,22 +172,31 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             from_url: The URL of the page where backlinks are rendered.
 
         Returns:
-            A dictionary of backlinks, with the type of reference as key and a list of URLs as value.
+            A dictionary of backlinks, with the type of reference as key and a list of backlinks as balue.
+            Each backlink is a list of (URL, title) tuples forming navigation breadcrumbs in reverse.
         """
-        relative_backlinks: dict[str, set[URLAndTitle]] = defaultdict(set)
+        relative_backlinks: dict[str, list[Backlink]] = defaultdict(list)
         for identifier in identifiers:
             backlinks = self._backlinks.get(identifier, {})
             for backlink_type, backlink_urls in backlinks.items():
                 for backlink_url in backlink_urls:
-                    relative_backlinks[backlink_type].add((relative_url(from_url, backlink_url), self._title_map[backlink_url]))
+                    relative_backlinks[backlink_type].append(self._nav(from_url, backlink_url))
         return relative_backlinks
 
-    def _breadcrumbs(self, page: Page | Section, title: str) -> str:
-        breadcrumbs = [title, page.title]
+    def _nav(self, from_url: str, backlink_url: str) -> Backlink:
+        backlink_page: Page = self._backlink_page_map[backlink_url]
+        backlink_title = self._title_map[backlink_url]
+        crumbs: list[BacklinkCrumb] = [
+            BacklinkCrumb(backlink_title, relative_url(from_url, backlink_url)),
+            BacklinkCrumb(backlink_page.title, relative_url(from_url, backlink_page.url + "#")),
+        ]
+        page: Page | Section = backlink_page
         while page.parent:
             page = page.parent
-            breadcrumbs.append(page.title)
-        return " ❭ ".join(reversed(breadcrumbs))
+            if url := getattr(page, "url", ""):
+                url = relative_url(from_url, url + "#")
+            crumbs.append(BacklinkCrumb(page.title, url))
+        return Backlink(crumbs)
 
     def register_anchor(
         self,
@@ -201,16 +214,18 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             title: The title of the anchor (optional).
             primary: Whether this anchor is the primary one for the identifier.
         """
-        page_anchor = f"{self.current_page.url}#{anchor or identifier}"
+        page: Page = self.current_page  # type: ignore[assignment]
+        url = f"{page.url}#{anchor or identifier}"
         url_map = self._primary_url_map if primary else self._secondary_url_map
         if identifier in url_map:
-            if page_anchor not in url_map[identifier]:
-                url_map[identifier].append(page_anchor)
+            if url not in url_map[identifier]:
+                url_map[identifier].append(url)
         else:
-            url_map[identifier] = [page_anchor]
-        if title and page_anchor not in self._title_map:
-            title = self._breadcrumbs(self.current_page, title) if self.current_page else title
-            self._title_map[page_anchor] = title
+            url_map[identifier] = [url]
+        if title and url not in self._title_map:
+            self._title_map[url] = title
+        if url not in self._backlink_page_map:
+            self._backlink_page_map[url] = page
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
