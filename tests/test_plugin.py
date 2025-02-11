@@ -94,26 +94,30 @@ def test_register_secondary_url() -> None:
     assert plugin._secondary_url_map == {"foo": ["foo.html#foo"]}
 
 
-def test_warn_multiple_urls(caplog: pytest.LogCaptureFixture) -> None:
+@pytest.mark.parametrize("primary", [True, False])
+def test_warn_multiple_urls(caplog: pytest.LogCaptureFixture, primary: bool) -> None:
     """Warn when multiple URLs are found for the same identifier."""
     plugin = AutorefsPlugin()
     plugin.config = AutorefsConfig()
-    plugin.register_anchor(identifier="foo", page="foo.html", primary=True)
-    plugin.register_anchor(identifier="foo", page="bar.html", primary=True)
+    plugin.register_anchor(identifier="foo", page="foo.html", primary=primary)
+    plugin.register_anchor(identifier="foo", page="bar.html", primary=primary)
     url_mapper = functools.partial(plugin.get_item_url, from_url="/hello")
     # YORE: Bump 2: Replace `, _legacy_refs=False` with `` within line.
     fix_refs('<autoref identifier="foo">Foo</autoref>', url_mapper, _legacy_refs=False)
-    assert "Multiple primary URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" in caplog.text
+    qualifier = "primary" if primary else "secondary"
+    assert (f"Multiple {qualifier} URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" in caplog.text) is primary
 
 
-def test_use_closest_url(caplog: pytest.LogCaptureFixture) -> None:
+@pytest.mark.parametrize("primary", [True, False])
+def test_use_closest_url(caplog: pytest.LogCaptureFixture, primary: bool) -> None:
     """Use the closest URL when multiple URLs are found for the same identifier."""
     plugin = AutorefsPlugin()
     plugin.config = AutorefsConfig()
     plugin.config.resolve_closest = True
-    plugin.register_anchor(identifier="foo", page="foo.html", primary=True)
-    plugin.register_anchor(identifier="foo", page="bar.html", primary=True)
+    plugin.register_anchor(identifier="foo", page="foo.html", primary=primary)
+    plugin.register_anchor(identifier="foo", page="bar.html", primary=primary)
     url_mapper = functools.partial(plugin.get_item_url, from_url="/hello")
     # YORE: Bump 2: Replace `, _legacy_refs=False` with `` within line.
     fix_refs('<autoref identifier="foo">Foo</autoref>', url_mapper, _legacy_refs=False)
-    assert "Multiple primary URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" not in caplog.text
+    qualifier = "primary" if primary else "secondary"
+    assert f"Multiple {qualifier} URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" not in caplog.text

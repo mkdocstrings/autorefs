@@ -223,7 +223,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             raise
 
         if len(urls) > 1:
-            if self.config.resolve_closest and from_url is not None:
+            if (self.config.resolve_closest or qualifier == "secondary") and from_url is not None:
                 return self._get_closest_url(from_url, urls, qualifier)
             log.warning(
                 "Multiple %s URLs found for '%s': %s. "
