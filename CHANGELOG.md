@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.3.1](https://github.com/mkdocstrings/autorefs/releases/tag/1.3.1) - 2025-02-11
+
+<small>[Compare with 1.3.0](https://github.com/mkdocstrings/autorefs/compare/1.3.0...1.3.1)</small>
+
+### Bug Fixes
+
+- Always resolve secondary URLs to closest (don't log warnings) ([243ad35](https://github.com/mkdocstrings/autorefs/commit/243ad35f193b48216b531333e0d91ab2fa0a0db4) by Timothée Mazzucotelli). [Issue-52](https://github.com/mkdocstrings/autorefs/issues/52)
+
 ## [1.3.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.3.0) - 2025-01-12
 
 <small>[Compare with 1.2.0](https://github.com/mkdocstrings/autorefs/compare/1.2.0...1.3.0)</small>
