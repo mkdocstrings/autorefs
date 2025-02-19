@@ -388,15 +388,17 @@ def _find_backlinks(html: str) -> Iterator[tuple[str, str, str]]:
 def _tooltip(identifier: str, title: str | None) -> str:
     if title:
         if title == identifier:
-            return title
-        return f"{title} ({identifier})"
-    return identifier
+            return escape(title)
+        return escape(f"{title} ({identifier})")
+    return escape(identifier)
 
 
 def fix_ref(
     url_mapper: Callable[[str], URLAndTitle],
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
     record_backlink: Callable[[str, str, str], None] | None = None,
+    *,
+    link_titles: bool = True,
 ) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
@@ -411,6 +413,7 @@ def fix_ref(
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
         unmapped: A list to store unmapped identifiers.
         record_backlink: A callable to record backlinks.
+        link_titles: Whether to set HTML titles on links.
 
     Returns:
         The actual function accepting a [`Match` object](https://docs.python.org/3/library/re.html#match-objects)
@@ -427,7 +430,11 @@ def fix_ref(
 
         identifiers = (identifier, slug) if slug else (identifier,)
 
-        if record_backlink and (backlink_type := attrs.get("backlink-type")) and (backlink_anchor := attrs.get("backlink-anchor")):
+        if (
+            record_backlink
+            and (backlink_type := attrs.get("backlink-type"))
+            and (backlink_anchor := attrs.get("backlink-anchor"))
+        ):
             record_backlink(identifier, backlink_type, backlink_anchor)
 
         try:
@@ -452,9 +459,8 @@ def fix_ref(
         class_attr = " ".join(classes)
         if remaining := attrs.remaining:
             remaining = f" {remaining}"
-        if optional and hover:
-            return f'<a class="{class_attr}" href="{escape(url)}"{remaining}>{title}</a>'
-        return f'<a class="{class_attr}" href="{escape(url)}"{remaining}>{title}</a>'
+        title_attr = f' title="{_tooltip(identifier, original_title)}"' if hover and link_titles else ""
+        return f'<a class="{class_attr}"{title_attr} href="{escape(url)}"{remaining}>{title}</a>'
 
     return inner
 
@@ -465,8 +471,9 @@ def fix_refs(
     # YORE: Bump 2: Remove line.
     *,
     record_backlink: Callable[[str, str, str], None] | None = None,
+    link_titles: bool = True,
     # YORE: Bump 2: Remove line.
-    _legacy_refs: bool = True,  # noqa: FBT001, FBT002
+    _legacy_refs: bool = True,
 ) -> tuple[str, list[tuple[str, AutorefsHookInterface.Context | None]]]:
     """Fix all references in the given HTML text.
 
@@ -475,12 +482,13 @@ def fix_refs(
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
         record_backlink: A callable to record backlinks.
+        link_titles: Whether to set HTML titles on links.
 
     Returns:
         The fixed HTML, and a list of unmapped identifiers (string and optional context).
     """
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]] = []
-    html = AUTOREF_RE.sub(fix_ref(url_mapper, unmapped, record_backlink), html)
+    html = AUTOREF_RE.sub(fix_ref(url_mapper, unmapped, record_backlink, link_titles=link_titles), html)
 
     # YORE: Bump 2: Remove block.
     if _legacy_refs:
@@ -552,9 +560,10 @@ class _PendingAnchors:
         self.anchors.append(anchor)
 
     def flush(self, alias_to: str | None = None, title: str | None = None) -> None:
-        for anchor in self.anchors:
-            self.plugin.register_anchor(anchor, alias_to, title=title, primary=True)
-        self.anchors.clear()
+        if page := self.plugin.current_page:
+            for anchor in self.anchors:
+                self.plugin.register_anchor(page, anchor, alias_to, title=title, primary=True)
+            self.anchors.clear()
 
 
 class BacklinksTreeProcessor(Treeprocessor):
@@ -589,7 +598,7 @@ class BacklinksTreeProcessor(Treeprocessor):
                 if not (el.text or el.get("href") or (el.tail and el.tail.strip())) and (anchor_id := el.get("id")):
                     self.last_heading_id = anchor_id
             elif el.tag in self._htags:  # Heading.
-               self.last_heading_id = el.get("id")
+                self.last_heading_id = el.get("id")
             elif el.tag == "autoref":
                 if "backlink-type" not in el.attrib:
                     el.set("backlink-type", "referenced-by")
