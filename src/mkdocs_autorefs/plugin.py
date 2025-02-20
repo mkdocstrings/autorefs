@@ -15,6 +15,8 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
+from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import PurePosixPath as URL  # noqa: N814
 from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import urlsplit
@@ -22,15 +24,18 @@ from warnings import warn
 
 from mkdocs.config.base import Config
 from mkdocs.config.config_options import Type
-from mkdocs.plugins import BasePlugin
+from mkdocs.plugins import BasePlugin, event_priority
 from mkdocs.structure.pages import Page
 
-from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
+from mkdocs_autorefs.references import AutorefsExtension, URLAndTitle, fix_refs, relative_url
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from jinja2.environment import Environment
     from mkdocs.config.defaults import MkDocsConfig
+    from mkdocs.structure.files import Files
+    from mkdocs.structure.nav import Section
     from mkdocs.structure.pages import Page
     from mkdocs.structure.toc import AnchorLink
 
@@ -41,6 +46,21 @@ try:
 except ImportError:
     # TODO: remove once support for MkDocs <1.5 is dropped
     log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
+
+
+@dataclass(eq=True, frozen=True, order=True)
+class BacklinkCrumb:
+    """A navigation breadcrumb for a backlink."""
+
+    title: str
+    url: str
+
+
+@dataclass(eq=True, frozen=True, order=True)
+class Backlink:
+    """A backlink (list of breadcrumbs)."""
+
+    crumbs: tuple[BacklinkCrumb, ...]
 
 
 class AutorefsConfig(Config):
@@ -61,6 +81,17 @@ class AutorefsConfig(Config):
     When false and multiple URLs are found for an identifier, autorefs will log a warning and resolve to the first URL.
     """
 
+    link_titles = Type(bool, default=True)
+    """Whether to set titles on links.
+
+    When true, and when the link's text is different from the linked object's full id,
+    autorefs will set the title HTML attribute on the link, using the linked object's full id.
+    Such title attributes are displayed as tooltips when hovering over the links.
+
+    The presence of titles prevents the instant preview feature of Material for MkDocs from working,
+    so it might be useful to disable this option when using this Material for MkDocs feature.
+    """
+
 
 class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     """The `autorefs` plugin for `mkdocs`.
@@ -76,7 +107,8 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     """
 
     scan_toc: bool = True
-    current_page: str | None = None
+    record_backlinks: bool = False
+    current_page: Page | None = None
     # YORE: Bump 2: Remove line.
     legacy_refs: bool = True
 
@@ -111,7 +143,10 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         # This logic unfolds in `_get_item_url`.
         self._primary_url_map: dict[str, list[str]] = {}
         self._secondary_url_map: dict[str, list[str]] = {}
+        self._title_map: dict[str, str] = {}
+        self._backlink_page_map: dict[str, Page] = {}
         self._abs_url_map: dict[str, str] = {}
+        self._backlinks: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
         # YORE: Bump 2: Remove line.
         self._get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
 
@@ -133,22 +168,81 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                 stacklevel=2,
             )
 
-    def register_anchor(self, page: str, identifier: str, anchor: str | None = None, *, primary: bool = True) -> None:
+    def _record_backlink(self, identifier: str, backlink_type: str, backlink_anchor: str, page_url: str) -> None:
+        """Record a backlink.
+
+        Arguments:
+            identifier: The target identifier.
+            backlink_type: The type of backlink.
+            backlink_anchor: The backlink target anchor.
+            page_url: The URL of the page containing the backlink.
+        """
+        if identifier in self._primary_url_map or identifier in self._secondary_url_map:
+            self._backlinks[identifier][backlink_type].add(f"{page_url}#{backlink_anchor}")
+
+    def get_backlinks(self, *identifiers: str, from_url: str) -> dict[str, set[Backlink]]:
+        """Return the backlinks to an identifier relative to the given URL.
+
+        Arguments:
+            *identifiers: The identifiers to get backlinks for.
+            from_url: The URL of the page where backlinks are rendered.
+
+        Returns:
+            A dictionary of backlinks, with the type of reference as key and a set of backlinks as value.
+            Each backlink is a tuple of (URL, title) tuples forming navigation breadcrumbs.
+        """
+        relative_backlinks: dict[str, set[Backlink]] = defaultdict(set)
+        for identifier in set(identifiers):
+            backlinks = self._backlinks.get(identifier, {})
+            for backlink_type, backlink_urls in backlinks.items():
+                for backlink_url in backlink_urls:
+                    relative_backlinks[backlink_type].add(self._crumbs(from_url, backlink_url))
+        return relative_backlinks
+
+    def _crumbs(self, from_url: str, backlink_url: str) -> Backlink:
+        backlink_page: Page = self._backlink_page_map[backlink_url]
+        backlink_title = self._title_map[backlink_url]
+        crumbs: list[BacklinkCrumb] = [
+            BacklinkCrumb(backlink_title, relative_url(from_url, backlink_url)),
+            BacklinkCrumb(backlink_page.title, relative_url(from_url, backlink_page.url + "#")),
+        ]
+        page: Page | Section = backlink_page
+        while page.parent:
+            page = page.parent
+            if url := getattr(page, "url", ""):
+                url = relative_url(from_url, url + "#")
+            crumbs.append(BacklinkCrumb(page.title, url))
+        return Backlink(tuple(reversed(crumbs)))
+
+    def register_anchor(
+        self,
+        page: Page,
+        identifier: str,
+        anchor: str | None = None,
+        *,
+        title: str | None = None,
+        primary: bool = True,
+    ) -> None:
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
 
         Arguments:
-            page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
+            page: The page where the anchor was found.
             identifier: The identifier to register.
             anchor: The anchor on the page, without `#`. If not provided, defaults to the identifier.
+            title: The title of the anchor (optional).
             primary: Whether this anchor is the primary one for the identifier.
         """
-        page_anchor = f"{page}#{anchor or identifier}"
+        url = f"{page.url}#{anchor or identifier}"
         url_map = self._primary_url_map if primary else self._secondary_url_map
         if identifier in url_map:
-            if page_anchor not in url_map[identifier]:
-                url_map[identifier].append(page_anchor)
+            if url not in url_map[identifier]:
+                url_map[identifier].append(url)
         else:
-            url_map[identifier] = [page_anchor]
+            url_map[identifier] = [url]
+        if title and url not in self._title_map:
+            self._title_map[url] = title
+        if url not in self._backlink_page_map:
+            self._backlink_page_map[url] = page
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
@@ -240,7 +334,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         from_url: str | None = None,
         # YORE: Bump 2: Remove line.
         fallback: Callable[[str], Sequence[str]] | None = None,
-    ) -> str:
+    ) -> URLAndTitle:
         """Return a site-relative URL with anchor to the identifier, if it's present anywhere.
 
         Arguments:
@@ -252,11 +346,12 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         """
         # YORE: Bump 2: Replace `, fallback` with `` within line.
         url = self._get_item_url(identifier, from_url, fallback)
+        title = self._title_map.get(url) or None
         if from_url is not None:
             parsed = urlsplit(url)
             if not parsed.scheme and not parsed.netloc:
-                return relative_url(from_url, url)
-        return url
+                url = relative_url(from_url, url)
+        return url, title
 
     def on_config(self, config: MkDocsConfig) -> MkDocsConfig | None:
         """Instantiate our Markdown extension.
@@ -287,7 +382,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             The same Markdown. We only use this hook to keep a reference to the current page URL,
                 used during Markdown conversion by the anchor scanner tree processor.
         """
-        self.current_page = page.url
+        self.current_page = page
         return markdown
 
     def on_page_content(self, html: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
@@ -306,56 +401,76 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         Returns:
             The same HTML. We only use this hook to map anchors to URLs.
         """
+        self.current_page = page
+        # Collect `std`-domain URLs.
         if self.scan_toc:
             log.debug("Mapping identifiers to URLs for page %s", page.file.src_path)
             for item in page.toc.items:
-                self.map_urls(page.url, item)
+                self.map_urls(page, item)
         return html
 
-    def map_urls(self, base_url: str, anchor: AnchorLink) -> None:
+    def map_urls(self, page: Page, anchor: AnchorLink) -> None:
         """Recurse on every anchor to map its ID to its absolute URL.
 
         This method populates `self._primary_url_map` by side-effect.
 
         Arguments:
-            base_url: The base URL to use as a prefix for each anchor's relative URL.
+            page: The page containing the anchors.
             anchor: The anchor to process and to recurse on.
         """
-        self.register_anchor(base_url, anchor.id, primary=True)
+        self.register_anchor(page, anchor.id, title=anchor.title, primary=True)
         for child in anchor.children:
-            self.map_urls(base_url, child)
+            self.map_urls(page, child)
 
-    def on_post_page(self, output: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
-        """Fix cross-references.
+    @event_priority(-50)  # Late, after mkdocstrings has finished loading inventories.
+    def on_env(self, env: Environment, /, *, config: MkDocsConfig, files: Files) -> Environment:  # noqa: ARG002
+        """Apply cross-references and collect backlinks.
 
-        Hook for the [`on_post_page` event](https://www.mkdocs.org/user-guide/plugins/#on_post_page).
+        Hook for the [`on_env` event](https://www.mkdocs.org/user-guide/plugins/#on_env).
         In this hook, we try to fix unresolved references of the form `[title][identifier]` or `[identifier][]`.
         Doing that allows the user of `autorefs` to cross-reference objects in their documentation strings.
         It uses the native Markdown syntax so it's easy to remember and use.
 
-        We log a warning for each reference that we couldn't map to an URL, but try to be smart and ignore identifiers
-        that do not look legitimate (sometimes documentation can contain strings matching
-        our [`AUTO_REF_RE`][mkdocs_autorefs.references.AUTO_REF_RE] regular expression that did not intend to reference anything).
-        We currently ignore references when their identifier contains a space or a slash.
+        We log a warning for each reference that we couldn't map to an URL.
+
+        We also collect backlinks at the same time. We fix cross-refs and collect backlinks in a single pass
+        for performance reasons (we don't want to run the regular expression on each page twice).
 
         Arguments:
-            output: HTML converted from Markdown.
-            page: The related MkDocs page instance.
-            kwargs: Additional arguments passed by MkDocs.
+            env: The MkDocs environment.
+            config: The MkDocs config object.
+            files: The list of files in the MkDocs project.
 
         Returns:
-            Modified HTML.
+            The unmodified environment.
         """
-        log.debug("Fixing references in page %s", page.file.src_path)
+        for file in files:
+            if file.page and file.page.content:
+                log.debug("Applying cross-refs in page %s", file.page.file.src_path)
 
-        # YORE: Bump 2: Replace `, fallback=self.get_fallback_anchor` with `` within line.
-        url_mapper = functools.partial(self.get_item_url, from_url=page.url, fallback=self.get_fallback_anchor)
-        # YORE: Bump 2: Replace `, _legacy_refs=self.legacy_refs` with `` within line.
-        fixed_output, unmapped = fix_refs(output, url_mapper, _legacy_refs=self.legacy_refs)
+                # YORE: Bump 2: Replace `, fallback=self.get_fallback_anchor` with `` within line.
+                url_mapper = functools.partial(
+                    self.get_item_url,
+                    from_url=file.page.url,
+                    fallback=self.get_fallback_anchor,
+                )
+                backlink_recorder = (
+                    functools.partial(self._record_backlink, page_url=file.page.url) if self.record_backlinks else None
+                )
+                # YORE: Bump 2: Replace `, _legacy_refs=self.legacy_refs` with `` within line.
+                file.page.content, unmapped = fix_refs(
+                    file.page.content,
+                    url_mapper,
+                    record_backlink=backlink_recorder,
+                    link_titles=self.config.link_titles,
+                    _legacy_refs=self.legacy_refs,
+                )
 
-        if unmapped and log.isEnabledFor(logging.WARNING):
-            for ref, context in unmapped:
-                message = f"from {context.filepath}:{context.lineno}: ({context.origin}) " if context else ""
-                log.warning(f"{page.file.src_path}: {message}Could not find cross-reference target '{ref}'")
+                if unmapped and log.isEnabledFor(logging.WARNING):
+                    for ref, context in unmapped:
+                        message = f"from {context.filepath}:{context.lineno}: ({context.origin}) " if context else ""
+                        log.warning(
+                            f"{file.page.file.src_path}: {message}Could not find cross-reference target '{ref}'",
+                        )
 
-        return fixed_output
+        return env

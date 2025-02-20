@@ -8,16 +8,17 @@ import pytest
 
 from mkdocs_autorefs.plugin import AutorefsConfig, AutorefsPlugin
 from mkdocs_autorefs.references import fix_refs
+from tests.helpers import create_page
 
 
 def test_url_registration() -> None:
     """Check that URLs can be registered, then obtained."""
     plugin = AutorefsPlugin()
-    plugin.register_anchor(identifier="foo", page="foo1.html", primary=True)
+    plugin.register_anchor(identifier="foo", page=create_page("foo1.html"), primary=True)
     plugin.register_url(identifier="bar", url="https://example.org/bar.html")
 
-    assert plugin.get_item_url("foo") == "foo1.html#foo"
-    assert plugin.get_item_url("bar") == "https://example.org/bar.html"
+    assert plugin.get_item_url("foo") == ("foo1.html#foo", None)
+    assert plugin.get_item_url("bar") == ("https://example.org/bar.html", None)
     with pytest.raises(KeyError):
         plugin.get_item_url("baz")
 
@@ -25,11 +26,11 @@ def test_url_registration() -> None:
 def test_url_registration_with_from_url() -> None:
     """Check that URLs can be registered, then obtained, relative to a page."""
     plugin = AutorefsPlugin()
-    plugin.register_anchor(identifier="foo", page="foo1.html", primary=True)
+    plugin.register_anchor(identifier="foo", page=create_page("foo1.html"), primary=True)
     plugin.register_url(identifier="bar", url="https://example.org/bar.html")
 
-    assert plugin.get_item_url("foo", from_url="a/b.html") == "../foo1.html#foo"
-    assert plugin.get_item_url("bar", from_url="a/b.html") == "https://example.org/bar.html"
+    assert plugin.get_item_url("foo", from_url="a/b.html") == ("../foo1.html#foo", None)
+    assert plugin.get_item_url("bar", from_url="a/b.html") == ("https://example.org/bar.html", None)
     with pytest.raises(KeyError):
         plugin.get_item_url("baz", from_url="a/b.html")
 
@@ -38,15 +39,15 @@ def test_url_registration_with_from_url() -> None:
 def test_url_registration_with_fallback() -> None:
     """Check that URLs can be registered, then obtained through a fallback."""
     plugin = AutorefsPlugin()
-    plugin.register_anchor(identifier="foo", page="foo1.html", primary=True)
+    plugin.register_anchor(identifier="foo", page=create_page("foo1.html"), primary=True)
     plugin.register_url(identifier="bar", url="https://example.org/bar.html")
 
     # URL map will be updated with baz -> foo1.html#foo
-    assert plugin.get_item_url("baz", fallback=lambda _: ("foo",)) == "foo1.html#foo"
+    assert plugin.get_item_url("baz", fallback=lambda _: ("foo",)) == ("foo1.html#foo", None)
     # as expected, baz is now known as foo1.html#foo
-    assert plugin.get_item_url("baz", fallback=lambda _: ("bar",)) == "foo1.html#foo"
+    assert plugin.get_item_url("baz", fallback=lambda _: ("bar",)) == ("foo1.html#foo", None)
     # unknown identifiers correctly fallback: qux -> https://example.org/bar.html
-    assert plugin.get_item_url("qux", fallback=lambda _: ("bar",)) == "https://example.org/bar.html"
+    assert plugin.get_item_url("qux", fallback=lambda _: ("bar",)) == ("https://example.org/bar.html", None)
 
     with pytest.raises(KeyError):
         plugin.get_item_url("foobar", fallback=lambda _: ("baaaa",))
@@ -57,10 +58,13 @@ def test_url_registration_with_fallback() -> None:
 def test_dont_make_relative_urls_relative_again() -> None:
     """Check that URLs are not made relative more than once."""
     plugin = AutorefsPlugin()
-    plugin.register_anchor(identifier="foo.bar.baz", page="foo/bar/baz.html", primary=True)
+    plugin.register_anchor(identifier="foo.bar.baz", page=create_page("foo/bar/baz.html"), primary=True)
 
     for _ in range(2):
-        assert plugin.get_item_url("foo.bar.baz", from_url="baz/bar/foo.html") == "../../foo/bar/baz.html#foo.bar.baz"
+        assert plugin.get_item_url("foo.bar.baz", from_url="baz/bar/foo.html") == (
+            "../../foo/bar/baz.html#foo.bar.baz",
+            None,
+        )
 
 
 @pytest.mark.parametrize(
@@ -90,7 +94,7 @@ def test_find_closest_url(base: str, urls: list[str], expected: str) -> None:
 def test_register_secondary_url() -> None:
     """Test registering secondary URLs."""
     plugin = AutorefsPlugin()
-    plugin.register_anchor(identifier="foo", page="foo.html", primary=False)
+    plugin.register_anchor(identifier="foo", page=create_page("foo.html"), primary=False)
     assert plugin._secondary_url_map == {"foo": ["foo.html#foo"]}
 
 
@@ -99,8 +103,8 @@ def test_warn_multiple_urls(caplog: pytest.LogCaptureFixture, primary: bool) -> 
     """Warn when multiple URLs are found for the same identifier."""
     plugin = AutorefsPlugin()
     plugin.config = AutorefsConfig()
-    plugin.register_anchor(identifier="foo", page="foo.html", primary=primary)
-    plugin.register_anchor(identifier="foo", page="bar.html", primary=primary)
+    plugin.register_anchor(identifier="foo", page=create_page("foo.html"), primary=primary)
+    plugin.register_anchor(identifier="foo", page=create_page("bar.html"), primary=primary)
     url_mapper = functools.partial(plugin.get_item_url, from_url="/hello")
     # YORE: Bump 2: Replace `, _legacy_refs=False` with `` within line.
     fix_refs('<autoref identifier="foo">Foo</autoref>', url_mapper, _legacy_refs=False)
@@ -114,8 +118,8 @@ def test_use_closest_url(caplog: pytest.LogCaptureFixture, primary: bool) -> Non
     plugin = AutorefsPlugin()
     plugin.config = AutorefsConfig()
     plugin.config.resolve_closest = True
-    plugin.register_anchor(identifier="foo", page="foo.html", primary=primary)
-    plugin.register_anchor(identifier="foo", page="bar.html", primary=primary)
+    plugin.register_anchor(identifier="foo", page=create_page("foo.html"), primary=primary)
+    plugin.register_anchor(identifier="foo", page=create_page("bar.html"), primary=primary)
     url_mapper = functools.partial(plugin.get_item_url, from_url="/hello")
     # YORE: Bump 2: Replace `, _legacy_refs=False` with `` within line.
     fix_refs('<autoref identifier="foo">Foo</autoref>', url_mapper, _legacy_refs=False)

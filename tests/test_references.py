@@ -9,7 +9,8 @@ import markdown
 import pytest
 
 from mkdocs_autorefs.plugin import AutorefsPlugin
-from mkdocs_autorefs.references import AutorefsExtension, AutorefsHookInterface, fix_refs, relative_url
+from mkdocs_autorefs.references import AutorefsExtension, AutorefsHookInterface, URLAndTitle, fix_refs, relative_url
+from tests.helpers import create_page
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -65,8 +66,8 @@ def run_references_test(
     md = markdown.Markdown(extensions=[AutorefsExtension(), *extensions], extension_configs=extensions)
     content = md.convert(source)
 
-    def url_mapper(identifier: str) -> str:
-        return relative_url(from_url, url_map[identifier])
+    def url_mapper(identifier: str) -> URLAndTitle:
+        return relative_url(from_url, url_map[identifier]), None
 
     actual_output, actual_unmapped = fix_refs(content, url_mapper)
     assert actual_output == output
@@ -306,7 +307,7 @@ def test_register_markdown_anchors() -> None:
     """Check that Markdown anchors are registered when enabled."""
     plugin = AutorefsPlugin()
     md = markdown.Markdown(extensions=["attr_list", "toc", AutorefsExtension(plugin)])
-    plugin.current_page = "page"
+    plugin.current_page = create_page("page")
     md.convert(
         dedent(
             """
@@ -367,7 +368,7 @@ def test_register_markdown_anchors_with_admonition() -> None:
     """Check that Markdown anchors are registered inside a nested admonition element."""
     plugin = AutorefsPlugin()
     md = markdown.Markdown(extensions=["attr_list", "toc", "admonition", AutorefsExtension(plugin)])
-    plugin.current_page = "page"
+    plugin.current_page = create_page("page")
     md.convert(
         dedent(
             """
@@ -434,7 +435,7 @@ def test_mark_identifiers_as_exact(markdown_ref: str, exact_expected: bool) -> N
     """Mark code and explicit identifiers as exact (no `slug` attribute in autoref elements)."""
     plugin = AutorefsPlugin()
     md = markdown.Markdown(extensions=["attr_list", "toc", AutorefsExtension(plugin)])
-    plugin.current_page = "page"
+    plugin.current_page = create_page("page")
     output = md.convert(markdown_ref)
     if exact_expected:
         assert "slug=" not in output
