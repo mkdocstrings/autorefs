@@ -107,6 +107,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     """
 
     scan_toc: bool = True
+    record_backlinks: bool = False
     current_page: Page | None = None
     # YORE: Bump 2: Remove line.
     legacy_refs: bool = True
@@ -453,7 +454,9 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                     from_url=file.page.url,
                     fallback=self.get_fallback_anchor,
                 )
-                backlink_recorder = functools.partial(self._record_backlink, page_url=file.page.url)
+                backlink_recorder = (
+                    functools.partial(self._record_backlink, page_url=file.page.url) if self.record_backlinks else None
+                )
                 # YORE: Bump 2: Replace `, _legacy_refs=self.legacy_refs` with `` within line.
                 file.page.content, unmapped = fix_refs(
                     file.page.content,

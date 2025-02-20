@@ -9,7 +9,7 @@ import markdown
 import pytest
 
 from mkdocs_autorefs.plugin import AutorefsPlugin
-from mkdocs_autorefs.references import AutorefsExtension, AutorefsHookInterface, fix_refs, relative_url
+from mkdocs_autorefs.references import AutorefsExtension, AutorefsHookInterface, URLAndTitle, fix_refs, relative_url
 from tests.helpers import create_page
 
 if TYPE_CHECKING:
@@ -66,7 +66,7 @@ def run_references_test(
     md = markdown.Markdown(extensions=[AutorefsExtension(), *extensions], extension_configs=extensions)
     content = md.convert(source)
 
-    def url_mapper(identifier: str) -> tuple[str, str | None]:
+    def url_mapper(identifier: str) -> URLAndTitle:
         return relative_url(from_url, url_map[identifier]), None
 
     actual_output, actual_unmapped = fix_refs(content, url_mapper)

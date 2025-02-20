@@ -23,7 +23,7 @@ from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 from markupsafe import Markup
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterable
     from pathlib import Path
     from re import Match
 
@@ -376,13 +376,6 @@ def _find_url(identifiers: Iterable[str], url_mapper: Callable[[str], URLAndTitl
         except KeyError:
             pass
     raise KeyError(f"None of the identifiers {identifiers} were found")
-
-
-def _find_backlinks(html: str) -> Iterator[tuple[str, str, str]]:
-    for match in AUTOREF_RE.finditer(html):
-        attrs = _html_attrs_parser.parse(f"<a {match['attrs']}>")
-        if (backlink_type := attrs.get("backlink-type")) and (backlink_anchor := attrs.get("backlink-anchor")):
-            yield attrs["identifier"], backlink_type, backlink_anchor
 
 
 def _tooltip(identifier: str, title: str | None) -> str:
