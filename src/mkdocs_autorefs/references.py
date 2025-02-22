@@ -258,7 +258,7 @@ def relative_url(url_a: str, url_b: str) -> str:
 
 # YORE: Bump 2: Remove block.
 def _legacy_fix_ref(
-    url_mapper: Callable[[str], str],
+    url_mapper: Callable[[str], tuple[str, str | None]],
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
 ) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
@@ -287,7 +287,7 @@ def _legacy_fix_ref(
         classes = (match["class"] or "").strip('"').split()
 
         try:
-            url = url_mapper(unescape(identifier))
+            url, _ = url_mapper(unescape(identifier))
         except KeyError:
             if kind == "autorefs-optional":
                 return title
@@ -364,7 +364,10 @@ class _HTMLAttrsParser(HTMLParser):
 _html_attrs_parser = _HTMLAttrsParser()
 
 
-def _find_url(identifiers: Iterable[str], url_mapper: Callable[[str], str]) -> str:
+def _find_url(
+    identifiers: Iterable[str],
+    url_mapper: Callable[[str], tuple[str, str | None]],
+) -> tuple[str, str | None]:
     for identifier in identifiers:
         try:
             return url_mapper(identifier)
@@ -374,7 +377,7 @@ def _find_url(identifiers: Iterable[str], url_mapper: Callable[[str], str]) -> s
 
 
 def fix_ref(
-    url_mapper: Callable[[str], str],
+    url_mapper: Callable[[str], tuple[str, str | None]],
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
 ) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
@@ -406,7 +409,7 @@ def fix_ref(
         identifiers = (identifier, slug) if slug else (identifier,)
 
         try:
-            url = _find_url(identifiers, url_mapper)
+            url, original_title = _find_url(identifiers, url_mapper)
         except KeyError:
             if optional:
                 log.debug("Unresolved optional cross-reference: %s", identifier)
@@ -436,7 +439,7 @@ def fix_ref(
 
 def fix_refs(
     html: str,
-    url_mapper: Callable[[str], str],
+    url_mapper: Callable[[str], tuple[str, str | None]],
     # YORE: Bump 2: Remove line.
     _legacy_refs: bool = True,  # noqa: FBT001, FBT002
 ) -> tuple[str, list[tuple[str, AutorefsHookInterface.Context | None]]]:
@@ -481,7 +484,7 @@ class AnchorScannerTreeProcessor(Treeprocessor):
             self._scan_anchors(root, pending_anchors)
             pending_anchors.flush()
 
-    def _scan_anchors(self, parent: Element, pending_anchors: _PendingAnchors) -> None:
+    def _scan_anchors(self, parent: Element, pending_anchors: _PendingAnchors, last_heading: str | None = None) -> None:
         for el in parent:
             if el.tag == "a":
                 # We found an anchor. Record its id if it has one.
@@ -490,23 +493,24 @@ class AnchorScannerTreeProcessor(Treeprocessor):
                 # If the element has text or a link, it's not an alias.
                 # Non-whitespace text after the element interrupts the chain, aliases can't apply.
                 if el.text or el.get("href") or (el.tail and el.tail.strip()):
-                    pending_anchors.flush()
+                    pending_anchors.flush(title=last_heading)
 
             elif el.tag == "p":
                 # A `p` tag is a no-op for our purposes, just recurse into it in the context
                 # of the current collection of anchors.
-                self._scan_anchors(el, pending_anchors)
+                self._scan_anchors(el, pending_anchors, last_heading)
                 # Non-whitespace text after the element interrupts the chain, aliases can't apply.
                 if el.tail and el.tail.strip():
                     pending_anchors.flush()
 
             elif el.tag in self._htags:
                 # If the element is a heading, that turns the pending anchors into aliases.
-                pending_anchors.flush(el.get("id"))
+                last_heading = el.text
+                pending_anchors.flush(el.get("id"), title=last_heading)
 
             else:
                 # But if it's some other interruption, flush anchors anyway as non-aliases.
-                pending_anchors.flush()
+                pending_anchors.flush(title=last_heading)
                 # Recurse into sub-elements, in a *separate* context.
                 self.run(el)
 
@@ -522,9 +526,9 @@ class _PendingAnchors:
     def append(self, anchor: str) -> None:
         self.anchors.append(anchor)
 
-    def flush(self, alias_to: str | None = None) -> None:
+    def flush(self, alias_to: str | None = None, title: str | None = None) -> None:
         for anchor in self.anchors:
-            self.plugin.register_anchor(self.current_page, anchor, alias_to, primary=True)
+            self.plugin.register_anchor(self.current_page, anchor, alias_to, title=title, primary=True)
         self.anchors.clear()
 
 

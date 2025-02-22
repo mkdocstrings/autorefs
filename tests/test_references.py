@@ -65,8 +65,8 @@ def run_references_test(
     md = markdown.Markdown(extensions=[AutorefsExtension(), *extensions], extension_configs=extensions)
     content = md.convert(source)
 
-    def url_mapper(identifier: str) -> str:
-        return relative_url(from_url, url_map[identifier])
+    def url_mapper(identifier: str) -> tuple[str, str | None]:
+        return relative_url(from_url, url_map[identifier]), None
 
     actual_output, actual_unmapped = fix_refs(content, url_mapper)
     assert actual_output == output
