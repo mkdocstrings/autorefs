@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from html import escape, unescape
 from html.parser import HTMLParser
+from io import StringIO
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Literal
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
@@ -376,15 +377,40 @@ def _find_url(
     raise KeyError(f"None of the identifiers {identifiers} were found")
 
 
-def _tooltip(identifier: str, title: str | None) -> str:
+def _tooltip(identifier: str, title: str | None, *, strip_tags: bool = False) -> str:
     if title:
         # Don't append identifier if it's already in the title.
         if identifier in title:
             return title
         # Append identifier (useful for API objects).
+        if strip_tags:
+            return f"{title} ({identifier})"
         return f"{title} (<code>{identifier}</code>)"
     # No title, just return the identifier.
+    if strip_tags:
+        return identifier
     return f"<code>{identifier}</code>"
+
+
+class _TagStripper(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.reset()
+        self.strict = False
+        self.convert_charrefs = True
+        self.text = StringIO()
+
+    def handle_data(self, data: str) -> None:
+        self.text.write(data)
+
+    def get_data(self) -> str:
+        return self.text.getvalue()
+
+
+def _strip_tags(html: str) -> str:
+    stripper = _TagStripper()
+    stripper.feed(html)
+    return stripper.get_data()
 
 
 def fix_ref(
@@ -392,6 +418,7 @@ def fix_ref(
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
     *,
     link_titles: bool | Literal["external"] = True,
+    strip_title_tags: bool = False,
 ) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
@@ -406,6 +433,7 @@ def fix_ref(
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
         unmapped: A list to store unmapped identifiers.
         link_titles: How to set HTML titles on links. Always (`True`), never (`False`), or external-only (`"external"`).
+        strip_title_tags: Whether to strip HTML tags from link titles.
 
     Returns:
         The actual function accepting a [`Match` object](https://docs.python.org/3/library/re.html#match-objects)
@@ -449,14 +477,14 @@ def fix_ref(
             if optional:
                 # The `optional` attribute is generally only added by mkdocstrings handlers,
                 # for API objects, meaning we can and should append the full identifier.
-                tooltip = _tooltip(identifier, original_title)
+                tooltip = _tooltip(identifier, original_title, strip_tags=strip_title_tags)
             else:
                 # Autorefs without `optional` are generally user-written ones,
                 # so we should only use the original title.
                 tooltip = original_title or ""
 
             if tooltip and tooltip not in f"<code>{title}</code>":
-                title_attr = f' title="{escape(tooltip)}"'
+                title_attr = f' title="{_strip_tags(tooltip) if strip_title_tags else escape(tooltip)}"'
 
         return f'<a class="{class_attr}"{title_attr} href="{escape(url)}"{remaining}>{title}</a>'
 
@@ -468,6 +496,7 @@ def fix_refs(
     url_mapper: Callable[[str], tuple[str, str | None]],
     *,
     link_titles: bool | Literal["external"] = True,
+    strip_title_tags: bool = False,
     # YORE: Bump 2: Remove line.
     _legacy_refs: bool = True,
 ) -> tuple[str, list[tuple[str, AutorefsHookInterface.Context | None]]]:
@@ -478,13 +507,14 @@ def fix_refs(
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
         link_titles: How to set HTML titles on links. Always (`True`), never (`False`), or external-only (`"external"`).
+        strip_title_tags: Whether to strip HTML tags from link titles.
 
     Returns:
         The fixed HTML, and a list of unmapped identifiers (string and optional context).
     """
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]] = []
     html = AUTOREF_RE.sub(
-        fix_ref(url_mapper, unmapped, link_titles=link_titles),
+        fix_ref(url_mapper, unmapped, link_titles=link_titles, strip_title_tags=strip_title_tags),
         html,
     )
 

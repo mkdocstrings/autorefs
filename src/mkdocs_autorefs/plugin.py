@@ -76,6 +76,14 @@ class AutorefsConfig(Config):
     optionally appending the identifier for API objects.
     """
 
+    strip_title_tags: bool | Literal["auto"] = Choice((True, False, "auto"), default="auto")  # type: ignore[assignment]
+    """Whether to strip HTML tags from link titles.
+
+    Some themes support HTML in link titles, but others do not.
+
+    - `"auto"`: strip tags unless the Material for MkDocs theme is detected.
+    """
+
 
 class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     """The `autorefs` plugin for `mkdocs`.
@@ -132,6 +140,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self._get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
 
         self._link_titles: bool | Literal["external"] = True
+        self._strip_title_tags: bool = False
 
     # YORE: Bump 2: Remove block.
     @property
@@ -314,6 +323,14 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         else:
             self._link_titles = self.config.link_titles
 
+        if self.config.strip_title_tags == "auto":
+            if getattr(config.theme, "name", None) == "material":
+                self._strip_title_tags = False
+            else:
+                self._strip_title_tags = True
+        else:
+            self._strip_title_tags = self.config.strip_title_tags
+
         return config
 
     def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
@@ -400,6 +417,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                     file.page.content,
                     url_mapper,
                     link_titles=self._link_titles,
+                    strip_title_tags=self._strip_title_tags,
                     _legacy_refs=self.legacy_refs,
                 )
 

@@ -53,6 +53,8 @@ def run_references_test(
     from_url: str = "page.html",
     extensions: Mapping[str, Mapping[str, Any]] | None = None,
     title_map: Mapping[str, str] | None = None,
+    *,
+    strip_tags: bool = True,
 ) -> None:
     """Help running tests about references.
 
@@ -71,7 +73,7 @@ def run_references_test(
     def url_mapper(identifier: str) -> tuple[str, str | None]:
         return relative_url(from_url, url_map[identifier]), title_map.get(identifier, None)
 
-    actual_output, actual_unmapped = fix_refs(content, url_mapper)
+    actual_output, actual_unmapped = fix_refs(content, url_mapper, strip_title_tags=strip_tags)
     assert actual_output == output
     assert actual_unmapped == (unmapped or [])
 
