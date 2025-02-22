@@ -99,7 +99,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     """
 
     scan_toc: bool = True
-    current_page: str | None = None
+    current_page: Page | None = None
     # YORE: Bump 2: Remove line.
     legacy_refs: bool = True
 
@@ -138,6 +138,8 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self._abs_url_map: dict[str, str] = {}
         # YORE: Bump 2: Remove line.
         self._get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
+        # YORE: Bump 2: Remove line.
+        self._url_to_page: dict[str, Page] = {}
 
         self._link_titles: bool | Literal["external"] = True
         self._strip_title_tags: bool = False
@@ -162,7 +164,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
 
     def register_anchor(
         self,
-        page: str,
+        page: Page,
         identifier: str,
         anchor: str | None = None,
         *,
@@ -172,18 +174,26 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
 
         Arguments:
-            page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
+            page: The page where the anchor was found.
             identifier: The identifier to register.
             anchor: The anchor on the page, without `#`. If not provided, defaults to the identifier.
             title: The title of the anchor (optional).
             primary: Whether this anchor is the primary one for the identifier.
         """
-        page_anchor = f"{page}#{anchor or identifier}"
+        # YORE: Bump 2: Remove block.
+        if isinstance(page, str):
+            try:
+                page = self._url_to_page[page]
+            except KeyError:
+                page = self.current_page
+
+        url = f"{page.url}#{anchor or identifier}"
         url_map = self._primary_url_map if primary else self._secondary_url_map
         if identifier in url_map:
-            if page_anchor not in url_map[identifier]:
-                url_map[identifier].append(page_anchor)
+            if url not in url_map[identifier]:
+                url_map[identifier].append(url)
         else:
+            url_map[identifier] = [url]
         if title and url not in self._title_map:
             self._title_map[url] = title
 
@@ -345,7 +355,9 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             The same Markdown. We only use this hook to keep a reference to the current page URL,
                 used during Markdown conversion by the anchor scanner tree processor.
         """
-        self.current_page = page.url
+        # YORE: Bump 2: Remove line.
+        self._url_to_page[page.url] = page
+        self.current_page = page
         return markdown
 
     def on_page_content(self, html: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
@@ -364,24 +376,33 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         Returns:
             The same HTML. We only use this hook to map anchors to URLs.
         """
+        self.current_page = page
+        # Collect `std`-domain URLs.
         if self.scan_toc:
             log.debug("Mapping identifiers to URLs for page %s", page.file.src_path)
             for item in page.toc.items:
-                self.map_urls(page.url, item)
+                self.map_urls(page, item)
         return html
 
-    def map_urls(self, base_url: str, anchor: AnchorLink) -> None:
+    def map_urls(self, page: Page, anchor: AnchorLink) -> None:
         """Recurse on every anchor to map its ID to its absolute URL.
 
         This method populates `self._primary_url_map` by side-effect.
 
         Arguments:
-            base_url: The base URL to use as a prefix for each anchor's relative URL.
+            page: The page containing the anchors.
             anchor: The anchor to process and to recurse on.
         """
-        self.register_anchor(base_url, anchor.id, title=anchor.title, primary=True)
+        # YORE: Bump 2: Remove block.
+        if isinstance(page, str):
+            try:
+                page = self._url_to_page[page]
+            except KeyError:
+                page = self.current_page
+
+        self.register_anchor(page, anchor.id, title=anchor.title, primary=True)
         for child in anchor.children:
-            self.map_urls(base_url, child)
+            self.map_urls(page, child)
 
     @event_priority(-50)  # Late, after mkdocstrings has finished loading inventories.
     def on_env(self, env: Environment, /, *, config: MkDocsConfig, files: Files) -> Environment:  # noqa: ARG002
