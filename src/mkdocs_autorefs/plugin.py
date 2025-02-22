@@ -2,12 +2,9 @@
 
 After each page is processed by the Markdown converter, this plugin stores absolute URLs of every HTML anchors
 it finds to later be able to fix unresolved references.
-It stores them during the [`on_page_content` event hook](https://www.mkdocs.org/user-guide/plugins/#on_page_content).
 
-Just before writing the final HTML to the disc, during the
-[`on_post_page` event hook](https://www.mkdocs.org/user-guide/plugins/#on_post_page),
-this plugin searches for references of the form `[identifier][]` or `[title][identifier]` that were not resolved,
-and fixes them using the previously stored identifier-URL mapping.
+Once every page has been rendered and all identifiers and their URLs collected,
+the plugin fixes unresolved references in the HTML content of the pages.
 """
 
 from __future__ import annotations
@@ -22,7 +19,7 @@ from warnings import warn
 
 from mkdocs.config.base import Config
 from mkdocs.config.config_options import Type
-from mkdocs.plugins import BasePlugin
+from mkdocs.plugins import BasePlugin, event_priority
 from mkdocs.structure.pages import Page
 
 from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
@@ -30,7 +27,9 @@ from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from jinja2.environment import Environment
     from mkdocs.config.defaults import MkDocsConfig
+    from mkdocs.structure.files import Files
     from mkdocs.structure.pages import Page
     from mkdocs.structure.toc import AnchorLink
 
@@ -67,9 +66,9 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
 
     This plugin defines the following event hooks:
 
-    - `on_config`
-    - `on_page_content`
-    - `on_post_page`
+    - `on_config`, to configure itself
+    - `on_page_markdown`, to set the current page in order for Markdown extension to use it
+    - `on_env`, to apply cross-references once all pages have been rendered
 
     Check the [Developing Plugins](https://www.mkdocs.org/user-guide/plugins/#developing-plugins) page of `mkdocs`
     for more information about its plugin system.
@@ -337,37 +336,47 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         for child in anchor.children:
             self.map_urls(base_url, child)
 
-    def on_post_page(self, output: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
-        """Fix cross-references.
+    @event_priority(-50)  # Late, after mkdocstrings has finished loading inventories.
+    def on_env(self, env: Environment, /, *, config: MkDocsConfig, files: Files) -> Environment:  # noqa: ARG002
+        """Apply cross-references.
 
-        Hook for the [`on_post_page` event](https://www.mkdocs.org/user-guide/plugins/#on_post_page).
+        Hook for the [`on_env` event](https://www.mkdocs.org/user-guide/plugins/#on_env).
         In this hook, we try to fix unresolved references of the form `[title][identifier]` or `[identifier][]`.
         Doing that allows the user of `autorefs` to cross-reference objects in their documentation strings.
         It uses the native Markdown syntax so it's easy to remember and use.
 
-        We log a warning for each reference that we couldn't map to an URL, but try to be smart and ignore identifiers
-        that do not look legitimate (sometimes documentation can contain strings matching
-        our [`AUTO_REF_RE`][mkdocs_autorefs.references.AUTO_REF_RE] regular expression that did not intend to reference anything).
-        We currently ignore references when their identifier contains a space or a slash.
+        We log a warning for each reference that we couldn't map to an URL.
 
         Arguments:
-            output: HTML converted from Markdown.
-            page: The related MkDocs page instance.
-            kwargs: Additional arguments passed by MkDocs.
+            env: The MkDocs environment.
+            config: The MkDocs config object.
+            files: The list of files in the MkDocs project.
 
         Returns:
-            Modified HTML.
+            The unmodified environment.
         """
-        log.debug("Fixing references in page %s", page.file.src_path)
+        for file in files:
+            if file.page and file.page.content:
+                log.debug("Applying cross-refs in page %s", file.page.file.src_path)
 
-        # YORE: Bump 2: Replace `, fallback=self.get_fallback_anchor` with `` within line.
-        url_mapper = functools.partial(self.get_item_url, from_url=page.url, fallback=self.get_fallback_anchor)
-        # YORE: Bump 2: Replace `, _legacy_refs=self.legacy_refs` with `` within line.
-        fixed_output, unmapped = fix_refs(output, url_mapper, _legacy_refs=self.legacy_refs)
+                # YORE: Bump 2: Replace `, fallback=self.get_fallback_anchor` with `` within line.
+                url_mapper = functools.partial(
+                    self.get_item_url,
+                    from_url=file.page.url,
+                    fallback=self.get_fallback_anchor,
+                )
+                # YORE: Bump 2: Replace `, _legacy_refs=self.legacy_refs` with `` within line.
+                file.page.content, unmapped = fix_refs(
+                    file.page.content,
+                    url_mapper,
+                    _legacy_refs=self.legacy_refs,
+                )
 
-        if unmapped and log.isEnabledFor(logging.WARNING):
-            for ref, context in unmapped:
-                message = f"from {context.filepath}:{context.lineno}: ({context.origin}) " if context else ""
-                log.warning(f"{page.file.src_path}: {message}Could not find cross-reference target '{ref}'")
+                if unmapped and log.isEnabledFor(logging.WARNING):
+                    for ref, context in unmapped:
+                        message = f"from {context.filepath}:{context.lineno}: ({context.origin}) " if context else ""
+                        log.warning(
+                            f"{file.page.file.src_path}: {message}Could not find cross-reference target '{ref}'",
+                        )
 
-        return fixed_output
+        return env

@@ -62,7 +62,7 @@ AUTOREF_RE = re.compile(r"<autoref (?P<attrs>.*?)>(?P<title>.*?)</autoref>", fla
 """The autoref HTML tag regular expression.
 
 A regular expression to match mkdocs-autorefs' special reference markers
-in the [`on_post_page` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_post_page].
+in the [`on_env` hook][mkdocs_autorefs.plugin.AutorefsPlugin.on_env].
 """
 
 
