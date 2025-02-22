@@ -542,7 +542,7 @@ class AnchorScannerTreeProcessor(Treeprocessor):
 
     def run(self, root: Element) -> None:  # noqa: D102
         if self.plugin.current_page is not None:
-            pending_anchors = _PendingAnchors(self.plugin, self.plugin.current_page)
+            pending_anchors = _PendingAnchors(self.plugin)
             self._scan_anchors(root, pending_anchors)
             pending_anchors.flush()
 
@@ -580,18 +580,18 @@ class AnchorScannerTreeProcessor(Treeprocessor):
 class _PendingAnchors:
     """A collection of HTML anchors that may or may not become aliased to an upcoming heading."""
 
-    def __init__(self, plugin: AutorefsPlugin, current_page: str):
+    def __init__(self, plugin: AutorefsPlugin):
         self.plugin = plugin
-        self.current_page = current_page
         self.anchors: list[str] = []
 
     def append(self, anchor: str) -> None:
         self.anchors.append(anchor)
 
     def flush(self, alias_to: str | None = None, title: str | None = None) -> None:
-        for anchor in self.anchors:
-            self.plugin.register_anchor(self.current_page, anchor, alias_to, title=title, primary=True)
-        self.anchors.clear()
+        if page := self.plugin.current_page:
+            for anchor in self.anchors:
+                self.plugin.register_anchor(page, anchor, alias_to, title=title, primary=True)
+            self.anchors.clear()
 
 
 @lru_cache
