@@ -13,12 +13,12 @@ import contextlib
 import functools
 import logging
 from pathlib import PurePosixPath as URL  # noqa: N814
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Literal
 from urllib.parse import urlsplit
 from warnings import warn
 
 from mkdocs.config.base import Config
-from mkdocs.config.config_options import Type
+from mkdocs.config.config_options import Choice, Type
 from mkdocs.plugins import BasePlugin, event_priority
 from mkdocs.structure.pages import Page
 
@@ -58,6 +58,22 @@ class AutorefsConfig(Config):
     If autorefs cannot find any URL that is close to the current page, it will log a warning and resolve to the first URL found.
 
     When false and multiple URLs are found for an identifier, autorefs will log a warning and resolve to the first URL.
+    """
+
+    link_titles: bool | Literal["auto", "external"] = Choice((True, False, "auto", "external"), default="auto")  # type: ignore[assignment]
+    """Whether to set titles on links.
+
+    Such title attributes are displayed as tooltips when hovering over the links.
+
+    - `"auto"`: autorefs will detect whether the instant preview feature of Material for MkDocs is enabled,
+        and set titles on external links when it is, all links if it is not.
+    - `"external"`: autorefs will set titles on external links only.
+    - `True`: autorefs will set titles on all links.
+    - `False`: autorefs will not set any title attributes on links.
+
+    Titles are only set when they are different from the link's text.
+    Titles are constructed from the linked heading's original title,
+    optionally appending the identifier for API objects.
     """
 
 
@@ -114,6 +130,8 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self._abs_url_map: dict[str, str] = {}
         # YORE: Bump 2: Remove line.
         self._get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
+
+        self._link_titles: bool | Literal["external"] = True
 
     # YORE: Bump 2: Remove block.
     @property
@@ -284,6 +302,18 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         """
         log.debug("Adding AutorefsExtension to the list")
         config.markdown_extensions.append(AutorefsExtension(self))  # type: ignore[arg-type]
+
+        if self.config.link_titles == "auto":
+            if getattr(config.theme, "name", None) == "material" and "navigation.instant.preview" in config.theme.get(
+                "features",
+                (),
+            ):
+                self._link_titles = "external"
+            else:
+                self._link_titles = True
+        else:
+            self._link_titles = self.config.link_titles
+
         return config
 
     def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
@@ -369,6 +399,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                 file.page.content, unmapped = fix_refs(
                     file.page.content,
                     url_mapper,
+                    link_titles=self._link_titles,
                     _legacy_refs=self.legacy_refs,
                 )
 

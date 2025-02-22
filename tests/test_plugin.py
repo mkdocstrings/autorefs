@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import functools
+from typing import Literal
 
 import pytest
+from mkdocs.config.defaults import MkDocsConfig
+from mkdocs.theme import Theme
 
 from mkdocs_autorefs.plugin import AutorefsConfig, AutorefsPlugin
 from mkdocs_autorefs.references import fix_refs
@@ -124,3 +127,51 @@ def test_use_closest_url(caplog: pytest.LogCaptureFixture, primary: bool) -> Non
     fix_refs('<autoref identifier="foo">Foo</autoref>', url_mapper, _legacy_refs=False)
     qualifier = "primary" if primary else "secondary"
     assert f"Multiple {qualifier} URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" not in caplog.text
+
+def test_on_config_hook() -> None:
+    """Check that the `on_config` hook runs without issue."""
+    plugin = AutorefsPlugin()
+    plugin.config = AutorefsConfig()
+    plugin.on_config(config=MkDocsConfig())
+
+
+def test_auto_link_titles_external() -> None:
+    """Check that `link_titles` are made external when automatic and Material is detected."""
+    plugin = AutorefsPlugin()
+    plugin.config = AutorefsConfig()
+    plugin.config.link_titles = "auto"
+    config = MkDocsConfig()
+    config.theme = Theme(name="material", features=["navigation.instant.preview"])
+    plugin.on_config(config=config)
+    assert plugin._link_titles == "external"
+
+
+def test_auto_link_titles() -> None:
+    """Check that `link_titles` are made true when automatic and Material is not detected."""
+    plugin = AutorefsPlugin()
+    plugin.config = AutorefsConfig()
+    plugin.config.link_titles = "auto"
+    config = MkDocsConfig()
+
+    config.theme = Theme(name="material", features=[])
+    plugin.on_config(config=config)
+    assert plugin._link_titles is True
+
+    config.theme = Theme("mkdocs")
+    plugin.on_config(config=config)
+    assert plugin._link_titles is True
+
+    config.theme = Theme("readthedocs")
+    plugin.on_config(config=config)
+    assert plugin._link_titles is True
+
+
+@pytest.mark.parametrize("link_titles", ["external", True, False])
+def test_explicit_link_titles(link_titles: bool | Literal["external"]) -> None:
+    """Check that explicit `link_titles` are kept unchanged."""
+    plugin = AutorefsPlugin()
+    plugin.config = AutorefsConfig()
+    plugin.config.link_titles = link_titles
+    plugin.on_config(config=MkDocsConfig())
+    assert plugin._link_titles is link_titles
+

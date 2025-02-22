@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from textwrap import dedent
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import markdown
 import pytest
@@ -46,12 +46,13 @@ def test_relative_url(current_url: str, to_url: str, href_url: str) -> None:
 
 
 def run_references_test(
-    url_map: dict[str, str],
+    url_map: Mapping[str, str],
     source: str,
     output: str,
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]] | None = None,
     from_url: str = "page.html",
-    extensions: Mapping = {},
+    extensions: Mapping[str, Mapping[str, Any]] | None = None,
+    title_map: Mapping[str, str] | None = None,
 ) -> None:
     """Help running tests about references.
 
@@ -62,11 +63,13 @@ def run_references_test(
         unmapped: The expected unmapped list.
         from_url: The source page URL.
     """
+    extensions = extensions or {}
     md = markdown.Markdown(extensions=[AutorefsExtension(), *extensions], extension_configs=extensions)
     content = md.convert(source)
+    title_map = title_map or {}
 
     def url_mapper(identifier: str) -> tuple[str, str | None]:
-        return relative_url(from_url, url_map[identifier]), None
+        return relative_url(from_url, url_map[identifier]), title_map.get(identifier, None)
 
     actual_output, actual_unmapped = fix_refs(content, url_mapper)
     assert actual_output == output
@@ -257,8 +260,8 @@ def test_custom_optional_reference() -> None:
     """Check that optional HTML-based references are expanded and never reported missing."""
     run_references_test(
         url_map={"ok": "ok.html#ok"},
-        source='<autoref optional identifier="bar">foo</autoref> <autoref identifier=ok optional>ok</autoref>',
-        output='<p>foo <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a></p>',
+        source='<autoref optional identifier="foo">bar</autoref> <autoref optional identifier="ok">ok</autoref>',
+        output='<p><span title="foo">bar</span> <a class="autorefs autorefs-internal" href="ok.html#ok">ok</a></p>',
     )
 
 
@@ -271,15 +274,6 @@ def test_legacy_custom_optional_hover_reference() -> None:
             source='<span data-autorefs-optional-hover="bar">foo</span> <span data-autorefs-optional-hover=ok>ok</span>',
             output='<p><span title="bar">foo</span> <a class="autorefs autorefs-internal" title="ok" href="ok.html#ok">ok</a></p>',
         )
-
-
-def test_custom_optional_hover_reference() -> None:
-    """Check that optional-hover HTML-based references are expanded and never reported missing."""
-    run_references_test(
-        url_map={"ok": "ok.html#ok"},
-        source='<autoref optional hover identifier="bar">foo</autoref> <autoref optional identifier=ok hover>ok</autoref>',
-        output='<p><span title="bar">foo</span> <a class="autorefs autorefs-internal" title="ok" href="ok.html#ok">ok</a></p>',
-    )
 
 
 # YORE: Bump 2: Remove block.
@@ -405,8 +399,8 @@ def test_keep_data_attributes() -> None:
     """Keep HTML data attributes from autorefs spans."""
     run_references_test(
         url_map={"example": "https://e.com#a"},
-        source='<autoref optional identifier="example" class="hi ho" data-foo data-bar="0">e</autoref>',
-        output='<p><a class="autorefs autorefs-external hi ho" href="https://e.com#a" data-foo data-bar="0">e</a></p>',
+        source='<autoref optional identifier="example" class="hi ho" data-foo data-bar="0">example</autoref>',
+        output='<p><a class="autorefs autorefs-external hi ho" href="https://e.com#a" data-foo data-bar="0">example</a></p>',
     )
 
 
@@ -485,4 +479,23 @@ def test_no_fallback_for_provided_identifiers() -> None:
         source="[Hello][Hello world]",
         output="<p>[Hello][Hello world]</p>",
         unmapped=[("Hello world", None)],
+    )
+
+
+def test_title_use_identifier() -> None:
+    """Check that the identifier is used for the title."""
+    run_references_test(
+        url_map={"fully.qualified.name": "ok.html#fully.qualified.name"},
+        source='<autoref optional identifier="fully.qualified.name">name</autoref>',
+        output='<p><a class="autorefs autorefs-internal" title="fully.qualified.name" href="ok.html#fully.qualified.name">name</a></p>',
+    )
+
+
+def test_title_append_identifier() -> None:
+    """Check that the identifier is appended to the title."""
+    run_references_test(
+        url_map={"fully.qualified.name": "ok.html#fully.qualified.name"},
+        title_map={"fully.qualified.name": "Qualified Name"},
+        source='<autoref optional identifier="fully.qualified.name">name</autoref>',
+        output='<p><a class="autorefs autorefs-internal" title="Qualified Name (fully.qualified.name)" href="ok.html#fully.qualified.name">name</a></p>',
     )
