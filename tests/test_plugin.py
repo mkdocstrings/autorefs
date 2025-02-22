@@ -128,6 +128,7 @@ def test_use_closest_url(caplog: pytest.LogCaptureFixture, primary: bool) -> Non
     qualifier = "primary" if primary else "secondary"
     assert f"Multiple {qualifier} URLs found for 'foo': ['foo.html#foo', 'bar.html#foo']" not in caplog.text
 
+
 def test_on_config_hook() -> None:
     """Check that the `on_config` hook runs without issue."""
     plugin = AutorefsPlugin()
@@ -175,3 +176,39 @@ def test_explicit_link_titles(link_titles: bool | Literal["external"]) -> None:
     plugin.on_config(config=MkDocsConfig())
     assert plugin._link_titles is link_titles
 
+
+def test_auto_strip_title_tags_false() -> None:
+    """Check that `strip_title_tags` is made false when Material is detected."""
+    plugin = AutorefsPlugin()
+    plugin.config = AutorefsConfig()
+    plugin.config.strip_title_tags = "auto"
+    config = MkDocsConfig()
+    config.theme = Theme(name="material")
+    plugin.on_config(config=config)
+    assert plugin._strip_title_tags is False
+
+
+def test_auto_strip_title_tags_true() -> None:
+    """Check that `strip_title_tags` are made true when automatic and Material is not detected."""
+    plugin = AutorefsPlugin()
+    plugin.config = AutorefsConfig()
+    plugin.config.strip_title_tags = "auto"
+    config = MkDocsConfig()
+
+    config.theme = Theme("mkdocs")
+    plugin.on_config(config=config)
+    assert plugin._strip_title_tags is True
+
+    config.theme = Theme("readthedocs")
+    plugin.on_config(config=config)
+    assert plugin._strip_title_tags is True
+
+
+@pytest.mark.parametrize("strip_title_tags", [True, False])
+def test_explicit_strip_tags(strip_title_tags: bool) -> None:
+    """Check that explicit `_strip_title_tags` are kept unchanged."""
+    plugin = AutorefsPlugin()
+    plugin.config = AutorefsConfig()
+    plugin.config.strip_title_tags = strip_title_tags
+    plugin.on_config(config=MkDocsConfig())
+    assert plugin._strip_title_tags is strip_title_tags

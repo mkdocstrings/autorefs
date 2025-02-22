@@ -201,3 +201,13 @@ plugins:
 ```
 
 [instant-preview]: https://squidfunk.github.io/mkdocs-material/setup/setting-up-navigation/#instant-previews
+
+By default, HTML tags are only preserved in titles if the current theme in use in Material for MkDocs. If the theme you are using does support HTML tags titles, you can prevent tags stripping with the `strip_title_tags` option:
+
+```yaml
+plugins:
+- autorefs:
+    strip_title_tags: false
+    # strip_title_tags: true
+    # strip_title_tags: auto  # default
+```
