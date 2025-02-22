@@ -182,3 +182,22 @@ You can also change the actual identifier of a heading, thanks again to the `att
 ```
 
 ...though note that this will impact the URL anchor too (and therefore the permalink to the heading).
+
+### Link titles
+
+When rendering cross-references, the autorefs plugin sets `title` HTML attributes on links. These titles are displayed as tooltips when hovering on links. For mandatory cross-references (user-written ones), the original title of the target section is used as tooltip, for example: `Original title`. For optional cross-references (typically rendered by mkdocstrings handlers), the identifier is appended to the original title, for example: `Original title (package.module.function)`. This is useful to indicate the fully qualified name of API objects.
+
+Since the presence of titles prevents [the instant preview feature of Material for MkDocs][instant-preview] from working, the autorefs plugin will detect when this theme and feature are used, and only set titles on *external* links (for which instant previews cannot work).
+
+If you want to force autorefs to always set titles, never set titles, or only set titles on external links, you can use the `link_titles` option:
+
+```yaml
+plugins:
+- autorefs:
+    link_titles: external
+    # link_titles: true
+    # link_titles: false
+    # link_titles: auto  # default
+```
+
+[instant-preview]: https://squidfunk.github.io/mkdocs-material/setup/setting-up-navigation/#instant-previews

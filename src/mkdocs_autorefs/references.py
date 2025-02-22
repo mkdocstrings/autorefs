@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from html import escape, unescape
 from html.parser import HTMLParser
-from typing import TYPE_CHECKING, Any, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Literal
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
@@ -319,7 +319,7 @@ class _AutorefsAttrs(dict):
     _handled_attrs: ClassVar[set[str]] = {
         "identifier",
         "optional",
-        "hover",
+        "hover",  # TODO: Remove at some point.
         "class",
         "domain",
         "role",
@@ -376,9 +376,22 @@ def _find_url(
     raise KeyError(f"None of the identifiers {identifiers} were found")
 
 
+def _tooltip(identifier: str, title: str | None) -> str:
+    if title:
+        # Don't append identifier if it's already in the title.
+        if identifier in title:
+            return title
+        # Append identifier (useful for API objects).
+        return f"{title} (<code>{identifier}</code>)"
+    # No title, just return the identifier.
+    return f"<code>{identifier}</code>"
+
+
 def fix_ref(
     url_mapper: Callable[[str], tuple[str, str | None]],
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
+    *,
+    link_titles: bool | Literal["external"] = True,
 ) -> Callable:
     """Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
 
@@ -392,6 +405,7 @@ def fix_ref(
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
         unmapped: A list to store unmapped identifiers.
+        link_titles: How to set HTML titles on links. Always (`True`), never (`False`), or external-only (`"external"`).
 
     Returns:
         The actual function accepting a [`Match` object](https://docs.python.org/3/library/re.html#match-objects)
@@ -404,7 +418,6 @@ def fix_ref(
         identifier: str = attrs["identifier"]
         slug = attrs.get("slug", None)
         optional = "optional" in attrs
-        hover = "hover" in attrs
 
         identifiers = (identifier, slug) if slug else (identifier,)
 
@@ -413,9 +426,7 @@ def fix_ref(
         except KeyError:
             if optional:
                 log.debug("Unresolved optional cross-reference: %s", identifier)
-                if hover:
-                    return f'<span title="{identifier}">{title}</span>'
-                return title
+                return f'<span title="{identifier}">{title}</span>'
             unmapped.append((identifier, attrs.context))
             if title == identifier:
                 return f"[{identifier}][]"
@@ -425,14 +436,29 @@ def fix_ref(
 
         parsed = urlsplit(url)
         external = parsed.scheme or parsed.netloc
+
         classes = (attrs.get("class") or "").strip().split()
         classes = ["autorefs", "autorefs-external" if external else "autorefs-internal", *classes]
         class_attr = " ".join(classes)
+
         if remaining := attrs.remaining:
             remaining = f" {remaining}"
-        if optional and hover:
-            return f'<a class="{class_attr}" title="{identifier}" href="{escape(url)}"{remaining}>{title}</a>'
-        return f'<a class="{class_attr}" href="{escape(url)}"{remaining}>{title}</a>'
+
+        title_attr = ""
+        if link_titles is True or (link_titles == "external" and external):
+            if optional:
+                # The `optional` attribute is generally only added by mkdocstrings handlers,
+                # for API objects, meaning we can and should append the full identifier.
+                tooltip = _tooltip(identifier, original_title)
+            else:
+                # Autorefs without `optional` are generally user-written ones,
+                # so we should only use the original title.
+                tooltip = original_title or ""
+
+            if tooltip and tooltip not in f"<code>{title}</code>":
+                title_attr = f' title="{escape(tooltip)}"'
+
+        return f'<a class="{class_attr}"{title_attr} href="{escape(url)}"{remaining}>{title}</a>'
 
     return inner
 
@@ -440,8 +466,10 @@ def fix_ref(
 def fix_refs(
     html: str,
     url_mapper: Callable[[str], tuple[str, str | None]],
+    *,
+    link_titles: bool | Literal["external"] = True,
     # YORE: Bump 2: Remove line.
-    _legacy_refs: bool = True,  # noqa: FBT001, FBT002
+    _legacy_refs: bool = True,
 ) -> tuple[str, list[tuple[str, AutorefsHookInterface.Context | None]]]:
     """Fix all references in the given HTML text.
 
@@ -449,12 +477,16 @@ def fix_refs(
         html: The text to fix.
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
+        link_titles: How to set HTML titles on links. Always (`True`), never (`False`), or external-only (`"external"`).
 
     Returns:
         The fixed HTML, and a list of unmapped identifiers (string and optional context).
     """
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]] = []
-    html = AUTOREF_RE.sub(fix_ref(url_mapper, unmapped), html)
+    html = AUTOREF_RE.sub(
+        fix_ref(url_mapper, unmapped, link_titles=link_titles),
+        html,
+    )
 
     # YORE: Bump 2: Remove block.
     if _legacy_refs:
