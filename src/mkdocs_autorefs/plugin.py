@@ -111,6 +111,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         # This logic unfolds in `_get_item_url`.
         self._primary_url_map: dict[str, list[str]] = {}
         self._secondary_url_map: dict[str, list[str]] = {}
+        self._title_map: dict[str, str] = {}
         self._abs_url_map: dict[str, str] = {}
         # YORE: Bump 2: Remove line.
         self._get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
@@ -133,13 +134,22 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                 stacklevel=2,
             )
 
-    def register_anchor(self, page: str, identifier: str, anchor: str | None = None, *, primary: bool = True) -> None:
+    def register_anchor(
+        self,
+        page: str,
+        identifier: str,
+        anchor: str | None = None,
+        *,
+        title: str | None = None,
+        primary: bool = True,
+    ) -> None:
         """Register that an anchor corresponding to an identifier was encountered when rendering the page.
 
         Arguments:
             page: The relative URL of the current page. Examples: `'foo/bar/'`, `'foo/index.html'`
             identifier: The identifier to register.
             anchor: The anchor on the page, without `#`. If not provided, defaults to the identifier.
+            title: The title of the anchor (optional).
             primary: Whether this anchor is the primary one for the identifier.
         """
         page_anchor = f"{page}#{anchor or identifier}"
@@ -148,7 +158,8 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             if page_anchor not in url_map[identifier]:
                 url_map[identifier].append(page_anchor)
         else:
-            url_map[identifier] = [page_anchor]
+        if title and url not in self._title_map:
+            self._title_map[url] = title
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
@@ -240,7 +251,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         from_url: str | None = None,
         # YORE: Bump 2: Remove line.
         fallback: Callable[[str], Sequence[str]] | None = None,
-    ) -> str:
+    ) -> tuple[str, str | None]:
         """Return a site-relative URL with anchor to the identifier, if it's present anywhere.
 
         Arguments:
@@ -252,11 +263,12 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         """
         # YORE: Bump 2: Replace `, fallback` with `` within line.
         url = self._get_item_url(identifier, from_url, fallback)
+        title = self._title_map.get(url) or None
         if from_url is not None:
             parsed = urlsplit(url)
             if not parsed.scheme and not parsed.netloc:
-                return relative_url(from_url, url)
-        return url
+                url = relative_url(from_url, url)
+        return url, title
 
     def on_config(self, config: MkDocsConfig) -> MkDocsConfig | None:
         """Instantiate our Markdown extension.
@@ -321,7 +333,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             base_url: The base URL to use as a prefix for each anchor's relative URL.
             anchor: The anchor to process and to recurse on.
         """
-        self.register_anchor(base_url, anchor.id, primary=True)
+        self.register_anchor(base_url, anchor.id, title=anchor.title, primary=True)
         for child in anchor.children:
             self.map_urls(base_url, child)
 
