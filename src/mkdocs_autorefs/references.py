@@ -551,7 +551,7 @@ class AutorefsExtension(Extension):
 
         Parameters:
             plugin: An optional reference to the autorefs plugin (to pass it to the anchor scanner tree processor).
-            **kwargs: Keyword arguments passed to the [base constructor][markdown.extensions.Extension].
+            **kwargs: Keyword arguments passed to the [base constructor][markdown.Extension].
         """
         super().__init__(**kwargs)
         self.plugin = plugin
