@@ -46,7 +46,7 @@ except ImportError:
 class AutorefsConfig(Config):
     """Configuration options for the `autorefs` plugin."""
 
-    resolve_closest = Type(bool, default=False)
+    resolve_closest: bool = Type(bool, default=False)  # type: ignore[assignment]
     """Whether to resolve an autoref to the closest URL when multiple URLs are found for an identifier.
 
     By closest, we mean a combination of "relative to the current page" and "shortest distance from the current page".
@@ -272,7 +272,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             The modified config.
         """
         log.debug("Adding AutorefsExtension to the list")
-        config["markdown_extensions"].append(AutorefsExtension(self))
+        config.markdown_extensions.append(AutorefsExtension(self))  # type: ignore[arg-type]
         return config
 
     def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
