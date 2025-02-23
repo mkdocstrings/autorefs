@@ -23,6 +23,8 @@ from markdown.treeprocessors import Treeprocessor
 from markdown.util import HTML_PLACEHOLDER_RE, INLINE_PLACEHOLDER_RE
 from markupsafe import Markup
 
+from mkdocs_autorefs.backlinks import BacklinksTreeProcessor
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
@@ -328,6 +330,8 @@ class _AutorefsAttrs(dict):
         "filepath",
         "lineno",
         "slug",
+        "backlink-type",
+        "backlink-anchor",
     }
 
     @property
@@ -416,6 +420,7 @@ def _strip_tags(html: str) -> str:
 def fix_ref(
     url_mapper: Callable[[str], tuple[str, str | None]],
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]],
+    record_backlink: Callable[[str, str, str], None] | None = None,
     *,
     link_titles: bool | Literal["external"] = True,
     strip_title_tags: bool = False,
@@ -432,6 +437,7 @@ def fix_ref(
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
         unmapped: A list to store unmapped identifiers.
+        record_backlink: A callable to record backlinks.
         link_titles: How to set HTML titles on links. Always (`True`), never (`False`), or external-only (`"external"`).
         strip_title_tags: Whether to strip HTML tags from link titles.
 
@@ -448,6 +454,13 @@ def fix_ref(
         optional = "optional" in attrs
 
         identifiers = (identifier, slug) if slug else (identifier,)
+
+        if (
+            record_backlink
+            and (backlink_type := attrs.get("backlink-type"))
+            and (backlink_anchor := attrs.get("backlink-anchor"))
+        ):
+            record_backlink(identifier, backlink_type, backlink_anchor)
 
         try:
             url, original_title = _find_url(identifiers, url_mapper)
@@ -495,6 +508,7 @@ def fix_refs(
     html: str,
     url_mapper: Callable[[str], tuple[str, str | None]],
     *,
+    record_backlink: Callable[[str, str, str], None] | None = None,
     link_titles: bool | Literal["external"] = True,
     strip_title_tags: bool = False,
     # YORE: Bump 2: Remove line.
@@ -506,6 +520,7 @@ def fix_refs(
         html: The text to fix.
         url_mapper: A callable that gets an object's site URL by its identifier,
             such as [mkdocs_autorefs.plugin.AutorefsPlugin.get_item_url][].
+        record_backlink: A callable to record backlinks.
         link_titles: How to set HTML titles on links. Always (`True`), never (`False`), or external-only (`"external"`).
         strip_title_tags: Whether to strip HTML tags from link titles.
 
@@ -514,7 +529,7 @@ def fix_refs(
     """
     unmapped: list[tuple[str, AutorefsHookInterface.Context | None]] = []
     html = AUTOREF_RE.sub(
-        fix_ref(url_mapper, unmapped, link_titles=link_titles, strip_title_tags=strip_title_tags),
+        fix_ref(url_mapper, unmapped, record_backlink, link_titles=link_titles, strip_title_tags=strip_title_tags),
         html,
     )
 
@@ -599,6 +614,11 @@ def _log_enabling_markdown_anchors() -> None:
     log.debug("Enabling Markdown anchors feature")
 
 
+@lru_cache
+def _log_enabling_backlinks() -> None:
+    log.debug("Enabling backlinks feature")
+
+
 class AutorefsExtension(Extension):
     """Markdown extension that transforms unresolved references into auto-references.
 
@@ -627,7 +647,8 @@ class AutorefsExtension(Extension):
 
         Add an instance of our [`AutorefsInlineProcessor`][mkdocs_autorefs.references.AutorefsInlineProcessor] to the Markdown parser.
         Also optionally add an instance of our [`AnchorScannerTreeProcessor`][mkdocs_autorefs.references.AnchorScannerTreeProcessor]
-        to the Markdown parser if a reference to the autorefs plugin was passed to this extension.
+        and [`BacklinksTreeProcessor`][mkdocs_autorefs.references.BacklinksTreeProcessor] to the Markdown parser
+        if a reference to the autorefs plugin was passed to this extension.
 
         Arguments:
             md: A `markdown.Markdown` instance.
@@ -637,10 +658,21 @@ class AutorefsExtension(Extension):
             AutorefsInlineProcessor.name,
             priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
         )
-        if self.plugin is not None and self.plugin.scan_toc and "attr_list" in md.treeprocessors:
-            _log_enabling_markdown_anchors()
-            md.treeprocessors.register(
-                AnchorScannerTreeProcessor(self.plugin, md),
-                AnchorScannerTreeProcessor.name,
-                priority=0,
-            )
+        if self.plugin is not None:
+            # Markdown anchors require the `attr_list` extension.
+            if self.plugin.scan_toc and "attr_list" in md.treeprocessors:
+                _log_enabling_markdown_anchors()
+                md.treeprocessors.register(
+                    AnchorScannerTreeProcessor(self.plugin, md),
+                    AnchorScannerTreeProcessor.name,
+                    priority=0,
+                )
+            # Backlinks require IDs on headings, which are either set by `toc`,
+            # or manually by the user with `attr_list`.
+            if self.plugin.record_backlinks and ("attr_list" in md.treeprocessors or "toc" in md.treeprocessors):
+                _log_enabling_backlinks()
+                md.treeprocessors.register(
+                    BacklinksTreeProcessor(self.plugin, md),
+                    BacklinksTreeProcessor.name,
+                    priority=0,
+                )

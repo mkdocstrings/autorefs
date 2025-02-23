@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import functools
 import logging
+from collections import defaultdict
 from pathlib import PurePosixPath as URL  # noqa: N814
 from typing import TYPE_CHECKING, Any, Callable, Literal
 from urllib.parse import urlsplit
@@ -22,6 +23,7 @@ from mkdocs.config.config_options import Choice, Type
 from mkdocs.plugins import BasePlugin, event_priority
 from mkdocs.structure.pages import Page
 
+from mkdocs_autorefs.backlinks import Backlink, BacklinkCrumb
 from mkdocs_autorefs.references import AutorefsExtension, fix_refs, relative_url
 
 if TYPE_CHECKING:
@@ -30,6 +32,7 @@ if TYPE_CHECKING:
     from jinja2.environment import Environment
     from mkdocs.config.defaults import MkDocsConfig
     from mkdocs.structure.files import Files
+    from mkdocs.structure.nav import Section
     from mkdocs.structure.pages import Page
     from mkdocs.structure.toc import AnchorLink
 
@@ -99,6 +102,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     """
 
     scan_toc: bool = True
+    record_backlinks: bool = False
     current_page: Page | None = None
     # YORE: Bump 2: Remove line.
     legacy_refs: bool = True
@@ -135,7 +139,9 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self._primary_url_map: dict[str, list[str]] = {}
         self._secondary_url_map: dict[str, list[str]] = {}
         self._title_map: dict[str, str] = {}
+        self._backlink_page_map: dict[str, Page] = {}
         self._abs_url_map: dict[str, str] = {}
+        self._backlinks: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
         # YORE: Bump 2: Remove line.
         self._get_fallback_anchor: Callable[[str], tuple[str, ...]] | None = None
         # YORE: Bump 2: Remove line.
@@ -161,6 +167,56 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                 DeprecationWarning,
                 stacklevel=2,
             )
+
+    def _record_backlink(self, identifier: str, backlink_type: str, backlink_anchor: str, page_url: str) -> None:
+        """Record a backlink.
+
+        Arguments:
+            identifier: The target identifier.
+            backlink_type: The type of backlink.
+            backlink_anchor: The backlink target anchor.
+            page_url: The URL of the page containing the backlink.
+        """
+        # When we record backlinks, all identifiers have been registered.
+        # If an identifier is not found in the primary or secondary URL maps, it's an absolute URL,
+        # meaning it comes from an external source (typically an object inventory),
+        # and we don't need to record backlinks for it.
+        if identifier in self._primary_url_map or identifier in self._secondary_url_map:
+            self._backlinks[identifier][backlink_type].add(f"{page_url}#{backlink_anchor}")
+
+    def get_backlinks(self, *identifiers: str, from_url: str) -> dict[str, set[Backlink]]:
+        """Return the backlinks to an identifier relative to the given URL.
+
+        Arguments:
+            *identifiers: The identifiers to get backlinks for.
+            from_url: The URL of the page where backlinks are rendered.
+
+        Returns:
+            A dictionary of backlinks, with the type of reference as key and a set of backlinks as value.
+            Each backlink is a tuple of (URL, title) tuples forming navigation breadcrumbs.
+        """
+        relative_backlinks: dict[str, set[Backlink]] = defaultdict(set)
+        for identifier in set(identifiers):
+            backlinks = self._backlinks.get(identifier, {})
+            for backlink_type, backlink_urls in backlinks.items():
+                for backlink_url in backlink_urls:
+                    relative_backlinks[backlink_type].add(self._crumbs(from_url, backlink_url))
+        return relative_backlinks
+
+    def _crumbs(self, from_url: str, backlink_url: str) -> Backlink:
+        backlink_page: Page = self._backlink_page_map[backlink_url]
+        backlink_title = self._title_map.get(backlink_url, "")
+        crumbs: list[BacklinkCrumb] = [
+            BacklinkCrumb(backlink_title, relative_url(from_url, backlink_url)),
+            BacklinkCrumb(backlink_page.title, relative_url(from_url, backlink_page.url + "#")),
+        ]
+        page: Page | Section = backlink_page
+        while page.parent:
+            page = page.parent
+            if url := getattr(page, "url", ""):
+                url = relative_url(from_url, url + "#")
+            crumbs.append(BacklinkCrumb(page.title, url))
+        return Backlink(tuple(reversed(crumbs)))
 
     def register_anchor(
         self,
@@ -196,6 +252,8 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             url_map[identifier] = [url]
         if title and url not in self._title_map:
             self._title_map[url] = title
+        if self.record_backlinks and url not in self._backlink_page_map:
+            self._backlink_page_map[url] = page
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
@@ -406,7 +464,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
 
     @event_priority(-50)  # Late, after mkdocstrings has finished loading inventories.
     def on_env(self, env: Environment, /, *, config: MkDocsConfig, files: Files) -> Environment:  # noqa: ARG002
-        """Apply cross-references.
+        """Apply cross-references and collect backlinks.
 
         Hook for the [`on_env` event](https://www.mkdocs.org/user-guide/plugins/#on_env).
         In this hook, we try to fix unresolved references of the form `[title][identifier]` or `[identifier][]`.
@@ -414,6 +472,9 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         It uses the native Markdown syntax so it's easy to remember and use.
 
         We log a warning for each reference that we couldn't map to an URL.
+
+        We also collect backlinks at the same time. We fix cross-refs and collect backlinks in a single pass
+        for performance reasons (we don't want to run the regular expression on each page twice).
 
         Arguments:
             env: The MkDocs environment.
@@ -433,10 +494,14 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                     from_url=file.page.url,
                     fallback=self.get_fallback_anchor,
                 )
+                backlink_recorder = (
+                    functools.partial(self._record_backlink, page_url=file.page.url) if self.record_backlinks else None
+                )
                 # YORE: Bump 2: Replace `, _legacy_refs=self.legacy_refs` with `` within line.
                 file.page.content, unmapped = fix_refs(
                     file.page.content,
                     url_mapper,
+                    record_backlink=backlink_recorder,
                     link_titles=self._link_titles,
                     strip_title_tags=self._strip_title_tags,
                     _legacy_refs=self.legacy_refs,
