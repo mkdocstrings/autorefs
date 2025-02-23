@@ -244,12 +244,12 @@ def relative_url(url_a: str, url_b: str) -> str:
     url_b, anchor = url_b.split("#", 1)
     parts_b = url_b.split("/")
 
-    # remove common left parts
+    # Remove common left parts.
     while parts_a and parts_b and parts_a[0] == parts_b[0]:
         parts_a.pop(0)
         parts_b.pop(0)
 
-    # go up as many times as remaining a parts' depth
+    # Go up as many times as remaining a parts' depth.
     levels = len(parts_a) - 1
     parts_relative = [".."] * levels + parts_b
     relative = "/".join(parts_relative)
