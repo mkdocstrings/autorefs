@@ -86,10 +86,10 @@ The autorefs plugin offers a feature called "Markdown anchors". Such anchors can
 The syntax is:
 
 ```md
-[](){#id-of-the-anchor}
+[](){ #id-of-the-anchor }
 ```
 
-If you look closely, it starts with the usual syntax for a link, `[]()`, except both the text value and URL of the link are empty. Then we see `{#id-of-the-anchor}`, which is the syntax supported by the [`attr_list`](https://python-markdown.github.io/extensions/attr_list/) extension. It sets an HTML id to the anchor element. The autorefs plugin simply gives a meaning to such anchors with ids. Note that raw HTML anchors like `<a id="foo"></a>` are not supported.
+If you look closely, it starts with the usual syntax for a link, `[]()`, except both the text value and URL of the link are empty. Then we see `{ #id-of-the-anchor }`, which is the syntax supported by the [`attr_list`](https://python-markdown.github.io/extensions/attr_list/) extension. It sets an HTML id to the anchor element. The autorefs plugin simply gives a meaning to such anchors with ids. Note that raw HTML anchors like `<a id="foo"></a>` are not supported.
 
 The `attr_list` extension must be enabled for the Markdown anchors feature to work:
 
@@ -108,7 +108,7 @@ Now, you can add anchors to documents:
 ```md
 Somewhere in a document.
 
-[](){#foobar-paragraph}
+[](){ #foobar-paragraph }
 
 Paragraph about foobar.
 ```
@@ -124,15 +124,15 @@ Check out the [paragraph about foobar][foobar-paragraph].
 If you add a Markdown anchor right above a heading, this anchor will redirect to the heading itself:
 
 ```md
-[](){#foobar}
+[](){ #foobar }
 ## A verbose title about foobar
 ```
 
 Linking to the `foobar` anchor will bring you directly to the heading, not the anchor itself, so the URL will show `#a-verbose-title-about-foobar` instead of `#foobar`. These anchors therefore act as "aliases" for headings. It is possible to define multiple aliases per heading:
 
 ```md
-[](){#contributing}
-[](){#development-setup}
+[](){ #contributing }
+[](){ #development-setup }
 ## How to contribute to the project?
 ```
 
@@ -161,11 +161,11 @@ Each page has:
 You don't want to change headings and make them redundant, like `## Arch: Install with package manager` and `## Debian: Install with package manager` just to be able to reference the right one with autorefs. Instead you can do this:
 
 ```md
-[](){#arch-install-pkg}
+[](){ #arch-install-pkg }
 ## Install with package manager
 ...
 
-[](){#arch-install-src}
+[](){ #arch-install-src }
 ## Install from sources
 ...
 ```
