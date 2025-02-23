@@ -36,7 +36,8 @@ Link to [Hello, World!](#hello-world) on the same page.
 
 This is a [*normal* link to an anchor](https://www.mkdocs.org/user-guide/writing-your-docs/#linking-to-pages). MkDocs generates anchors for each heading, and they can always be used to link to something, either within the same page (as shown here) or by specifying the path of the other page.
 
-But with this plugin, you can **link to a heading from any other page** on the site *without* needing to know the path of either of the pages, just the heading title itself.  
+But with this plugin, you can **link to a heading from any other page** on the site *without* needing to know the path of either of the pages, just the heading title itself.
+
 Let's create another Markdown page to try this, `subdir/doc2.md`:
 
 ```markdown
