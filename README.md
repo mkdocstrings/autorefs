@@ -211,3 +211,97 @@ plugins:
     # strip_title_tags: true
     # strip_title_tags: auto  # default
 ```
+
+### Backlinks
+
+The autorefs plugin supports recording backlinks, that other plugins or systems can then use to render backlinks into pages.
+
+For example, when linking from page `foo/`, section `Section` to a heading with identifier `heading` thanks to a cross-reference `[Some heading][heading]`, the plugin will record that `foo/#section` references `heading`.
+
+```md
+# Page foo
+
+This is page foo.
+
+## Section
+
+This section references [some heading][heading].
+```
+
+The `record_backlinks` attribute of the autorefs plugin must be set to true before Markdown is rendered to HTML to enable backlinks recording. This is typically done in an `on_config` MkDocs hook:
+
+```python
+from mkdocs.config.defaults import MkDocsConfig
+
+
+def on_config(config: MkDocsConfig) -> MkDocsConfig | None:
+    config.plugins["autorefs"].record_backlinks = True
+    return config
+```
+
+Note that for backlinks to be recorded with accurate URLs, headings must have HTML IDs, meaning either the `toc` extension must be enabled, or the `attr_list` extension must be enabled *and* authors must add IDs to the relevant headings, with the `## Heading { #heading-id }` syntax.
+
+Other plugins or systems integrating with the autorefs plugin can then retrieve backlinks for a specific identifier:
+
+```python
+backlinks = autorefs_plugin.get_backlinks("heading")
+```
+
+The `get_backlinks` method returns a map of backlink types to sets of backlinks. A backlink is a tuple of navigation breadcrumbs, each breadcrumb having a title and URL.
+
+```python
+print(backlinks)
+# {
+#  "referenced-by": {
+#      Backlink(
+#          crumbs=(
+#              BacklinkCrumb(title="Foo", url="foo/"),
+#              BacklinkCrumb(title="Section", url="foo/#section"),
+#          ),
+#      ),
+#  }
+```
+
+The default backlink type is `referenced-by`, but can be customized by other plugins or systems thanks to the `backlink-type` HTML data attribute on `autoref` elements. Such plugins and systems can also specify the anchor on the current page to use for the backlink with the `backlink-anchor` HTML data attribute on `autoref` elements.
+
+```html
+<autoref identifier="heading" backlink-type="mentionned-by" backlink-anchor="section-paragraph">
+```
+
+This feature is typically designed for use in [mkdocstrings](https://mkdocstrings.github.io/) handlers, though is not exclusive to mkdocstrings: it can be used by any other plugin or even author hooks. Such a hook is provided as an example here:
+
+```python
+def on_env(env, /, *, config, files):
+    regex = r"<backlinks\s+identifier=\"([^\"]+)\"\s*/?>"
+
+    def repl(match: Match) -> str:
+        identifier = match.group(1)
+        backlinks = config.plugin["autorefs"].get_backlinks(identifier, from_url=file.page.url)
+        if not backlinks:
+            return ""
+        return "".join(_render_backlinks(backlinks))
+
+    for file in files:
+        if file.page and file.page.content:
+            file.page.content = re.sub(regex, repl, file.page.content)
+
+    return env
+
+
+
+def _render_backlinks(backlinks):
+    yield "<div>"
+    for backlink_type, backlink_list in backlinks:
+        yield f"<b>{verbose_type[backlink_type]}:</b>"
+        yield "<ul>"
+        for backlink in sorted(backlink_list, key: lambda b: b.crumbs):
+            yield "<li>"
+            for crumb in backlink.crumbs:
+                if crumb.url and crumb.title:
+                    yield f'<a href="{crumb.url}">{crumb.title}</a>'
+                elif crumb.title:
+                    yield f"<span>{crumb.title}</span>"
+            yield "</li>"
+        yield "</ul>"
+    yield "</div>"
+```
