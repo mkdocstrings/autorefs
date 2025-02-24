@@ -5,6 +5,23 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.4.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.4.0) - 2025-02-24
+
+<small>[Compare with 1.3.1](https://github.com/mkdocstrings/autorefs/compare/1.3.1...1.4.0)</small>
+
+### Features
+
+- Add backlinks feature ([5a3b387](https://github.com/mkdocstrings/autorefs/commit/5a3b38753c68cabd047fd062afba66417ccd124e) by Timothée Mazzucotelli). [PR-65](https://github.com/mkdocstrings/autorefs/pull/65), [Issue-mkdocstrings-723](https://github.com/mkdocstrings/mkdocstrings/issues/723), [Issue-mkdocstrings-python-153](https://github.com/mkdocstrings/python/issues/153)
+- Add `strip_title_tags` option ([00ce203](https://github.com/mkdocstrings/autorefs/commit/00ce2031a1a648c7d6f682ff7e94138c73957b20) and [b21aefd](https://github.com/mkdocstrings/autorefs/commit/b21aefd79b7f53c1b153be635cf4a8ccf1fcdb2f) by Timothée Mazzucotelli). [Issue-33](https://github.com/mkdocstrings/autorefs/issues/33)
+- Add `link_titles` option and adapt related logic ([e3b602e](https://github.com/mkdocstrings/autorefs/commit/e3b602e60a5836e3ef41433d5490202a9656f603) by Timothée Mazzucotelli). [Issue-33](https://github.com/mkdocstrings/autorefs/issues/33), [Issue-62](https://github.com/mkdocstrings/autorefs/issues/62)
+
+### Code Refactoring
+
+- Move code to internal folder, expose public API in top-level module, document all public objects ([9615d13](https://github.com/mkdocstrings/autorefs/commit/9615d13e2f85640ebb1c6c055d41f068752884b2) by Timothée Mazzucotelli).
+- Store actual page instance instead of URL in plugin's `current_page` attribute ([8023588](https://github.com/mkdocstrings/autorefs/commit/8023588ee38dc86299010979b05873dfd6b5039a) and [2009f85](https://github.com/mkdocstrings/autorefs/commit/2009f85eb10abc14b35c74a969c84744ee1f98ed) by Timothée Mazzucotelli).
+- Use the `on_env` hook to fix cross-references ([70fec3e](https://github.com/mkdocstrings/autorefs/commit/70fec3e270e2d8f95213d63b8a99962b9d30569c) by Timothée Mazzucotelli). [Discussion-mkdocs-3917](https://github.com/mkdocs/mkdocs/discussions/3917)
+- Record heading titles alongside URLs ([791782e](https://github.com/mkdocstrings/autorefs/commit/791782eef8f85aad84c39bf4f82286613f055322) by Timothée Mazzucotelli). [Issue-33](https://github.com/mkdocstrings/autorefs/issues/33)
+
 ## [1.3.1](https://github.com/mkdocstrings/autorefs/releases/tag/1.3.1) - 2025-02-11
 
 <small>[Compare with 1.3.0](https://github.com/mkdocstrings/autorefs/compare/1.3.0...1.3.1)</small>
