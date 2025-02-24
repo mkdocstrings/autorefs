@@ -183,7 +183,7 @@ def test_auto_strip_title_tags_false() -> None:
     plugin.config = AutorefsConfig()
     plugin.config.strip_title_tags = "auto"
     config = MkDocsConfig()
-    config.theme = Theme(name="material")
+    config.theme = Theme(name="material", features=["content.tooltips"])
     plugin.on_config(config=config)
     assert plugin._strip_title_tags is False
 
@@ -194,6 +194,10 @@ def test_auto_strip_title_tags_true() -> None:
     plugin.config = AutorefsConfig()
     plugin.config.strip_title_tags = "auto"
     config = MkDocsConfig()
+
+    config.theme = Theme(name="material", features=[])
+    plugin.on_config(config=config)
+    assert plugin._strip_title_tags is True
 
     config.theme = Theme("mkdocs")
     plugin.on_config(config=config)

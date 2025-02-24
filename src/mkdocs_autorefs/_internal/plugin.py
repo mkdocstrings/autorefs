@@ -189,7 +189,10 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             self._link_titles = self.config.link_titles
 
         if self.config.strip_title_tags == "auto":
-            if getattr(config.theme, "name", None) == "material":
+            if getattr(config.theme, "name", None) == "material" and "content.tooltips" in config.theme.get(
+                "features",
+                (),
+            ):
                 self._strip_title_tags = False
             else:
                 self._strip_title_tags = True
