@@ -152,23 +152,169 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self._link_titles: bool | Literal["external"] = True
         self._strip_title_tags: bool = False
 
-    # YORE: Bump 2: Remove block.
-    @property
-    def get_fallback_anchor(self) -> Callable[[str], tuple[str, ...]] | None:
-        """Fallback anchors getter."""
-        return self._get_fallback_anchor
+    # ----------------------------------------------------------------------- #
+    # MkDocs Hooks                                                            #
+    # ----------------------------------------------------------------------- #
+    def on_config(self, config: MkDocsConfig) -> MkDocsConfig | None:
+        """Instantiate our Markdown extension.
 
-    # YORE: Bump 2: Remove block.
-    @get_fallback_anchor.setter
-    def get_fallback_anchor(self, value: Callable[[str], tuple[str, ...]] | None) -> None:
-        """Fallback anchors setter."""
-        self._get_fallback_anchor = value
-        if value is not None:
-            warn(
-                "Setting a fallback anchor function is deprecated and will be removed in a future release.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        Hook for the [`on_config` event](https://www.mkdocs.org/user-guide/plugins/#on_config).
+        In this hook, we instantiate our [`AutorefsExtension`][mkdocs_autorefs.AutorefsExtension]
+        and add it to the list of Markdown extensions used by `mkdocs`.
+
+        Arguments:
+            config: The MkDocs config object.
+
+        Returns:
+            The modified config.
+        """
+        _log.debug("Adding AutorefsExtension to the list")
+        config.markdown_extensions.append(AutorefsExtension(self))  # type: ignore[arg-type]
+
+        # YORE: Bump 2: Remove block.
+        # mkdocstrings still uses the `page` attribute as a string.
+        # Fortunately, it does so in f-strings, so we can simply patch the `__str__` method
+        # to render the URL.
+        Page.__str__ = lambda page: page.url  # type: ignore[method-assign,attr-defined]
+
+        if self.config.link_titles == "auto":
+            if getattr(config.theme, "name", None) == "material" and "navigation.instant.preview" in config.theme.get(
+                "features",
+                (),
+            ):
+                self._link_titles = "external"
+            else:
+                self._link_titles = True
+        else:
+            self._link_titles = self.config.link_titles
+
+        if self.config.strip_title_tags == "auto":
+            if getattr(config.theme, "name", None) == "material":
+                self._strip_title_tags = False
+            else:
+                self._strip_title_tags = True
+        else:
+            self._strip_title_tags = self.config.strip_title_tags
+
+        return config
+
+    def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
+        """Remember which page is the current one.
+
+        Arguments:
+            markdown: Input Markdown.
+            page: The related MkDocs page instance.
+            kwargs: Additional arguments passed by MkDocs.
+
+        Returns:
+            The same Markdown. We only use this hook to keep a reference to the current page URL,
+                used during Markdown conversion by the anchor scanner tree processor.
+        """
+        # YORE: Bump 2: Remove line.
+        self._url_to_page[page.url] = page
+        self.current_page = page
+        return markdown
+
+    def on_page_content(self, html: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
+        """Map anchors to URLs.
+
+        Hook for the [`on_page_content` event](https://www.mkdocs.org/user-guide/plugins/#on_page_content).
+        In this hook, we map the IDs of every anchor found in the table of contents to the anchors absolute URLs.
+        This mapping will be used later to fix unresolved reference of the form `[title][identifier]` or
+        `[identifier][]`.
+
+        Arguments:
+            html: HTML converted from Markdown.
+            page: The related MkDocs page instance.
+            kwargs: Additional arguments passed by MkDocs.
+
+        Returns:
+            The same HTML. We only use this hook to map anchors to URLs.
+        """
+        self.current_page = page
+        # Collect `std`-domain URLs.
+        if self.scan_toc:
+            _log.debug("Mapping identifiers to URLs for page %s", page.file.src_path)
+            for item in page.toc.items:
+                self.map_urls(page, item)
+        return html
+
+    @event_priority(-50)  # Late, after mkdocstrings has finished loading inventories.
+    def on_env(self, env: Environment, /, *, config: MkDocsConfig, files: Files) -> Environment:  # noqa: ARG002
+        """Apply cross-references and collect backlinks.
+
+        Hook for the [`on_env` event](https://www.mkdocs.org/user-guide/plugins/#on_env).
+        In this hook, we try to fix unresolved references of the form `[title][identifier]` or `[identifier][]`.
+        Doing that allows the user of `autorefs` to cross-reference objects in their documentation strings.
+        It uses the native Markdown syntax so it's easy to remember and use.
+
+        We log a warning for each reference that we couldn't map to an URL.
+
+        We also collect backlinks at the same time. We fix cross-refs and collect backlinks in a single pass
+        for performance reasons (we don't want to run the regular expression on each page twice).
+
+        Arguments:
+            env: The MkDocs environment.
+            config: The MkDocs config object.
+            files: The list of files in the MkDocs project.
+
+        Returns:
+            The unmodified environment.
+        """
+        for file in files:
+            if file.page and file.page.content:
+                _log.debug("Applying cross-refs in page %s", file.page.file.src_path)
+
+                # YORE: Bump 2: Replace `, fallback=self.get_fallback_anchor` with `` within line.
+                url_mapper = functools.partial(
+                    self.get_item_url,
+                    from_url=file.page.url,
+                    fallback=self.get_fallback_anchor,
+                )
+                backlink_recorder = (
+                    functools.partial(self._record_backlink, page_url=file.page.url) if self.record_backlinks else None
+                )
+                # YORE: Bump 2: Replace `, _legacy_refs=self.legacy_refs` with `` within line.
+                file.page.content, unmapped = fix_refs(
+                    file.page.content,
+                    url_mapper,
+                    record_backlink=backlink_recorder,
+                    link_titles=self._link_titles,
+                    strip_title_tags=self._strip_title_tags,
+                    _legacy_refs=self.legacy_refs,
+                )
+
+                if unmapped and _log.isEnabledFor(logging.WARNING):
+                    for ref, context in unmapped:
+                        message = f"from {context.filepath}:{context.lineno}: ({context.origin}) " if context else ""
+                        _log.warning(
+                            f"{file.page.file.src_path}: {message}Could not find cross-reference target '{ref}'",
+                        )
+
+        return env
+
+    # ----------------------------------------------------------------------- #
+    # Utilities                                                               #
+    # ----------------------------------------------------------------------- #
+    def map_urls(self, page: Page, anchor: AnchorLink) -> None:
+        """Recurse on every anchor to map its ID to its absolute URL.
+
+        This method populates `self._primary_url_map` by side-effect.
+
+        Arguments:
+            page: The page containing the anchors.
+            anchor: The anchor to process and to recurse on.
+        """
+        # YORE: Bump 2: Remove block.
+        if isinstance(page, str):
+            try:
+                page = self._url_to_page[page]
+            except KeyError:
+                page = self.current_page
+
+        self.register_anchor(page, anchor.id, title=anchor.title, primary=True)
+        for child in anchor.children:
+            self.map_urls(page, child)
 
     def _record_backlink(self, identifier: str, backlink_type: str, backlink_anchor: str, page_url: str) -> None:
         """Record a backlink.
@@ -366,160 +512,23 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                 url = relative_url(from_url, url)
         return url, title
 
-    def on_config(self, config: MkDocsConfig) -> MkDocsConfig | None:
-        """Instantiate our Markdown extension.
+    # YORE: Bump 2: Remove block.
+    # ----------------------------------------------------------------------- #
+    # Deprecated API                                                          #
+    # ----------------------------------------------------------------------- #
+    @property
+    def get_fallback_anchor(self) -> Callable[[str], tuple[str, ...]] | None:
+        """Fallback anchors getter."""
+        return self._get_fallback_anchor
 
-        Hook for the [`on_config` event](https://www.mkdocs.org/user-guide/plugins/#on_config).
-        In this hook, we instantiate our [`AutorefsExtension`][mkdocs_autorefs.AutorefsExtension]
-        and add it to the list of Markdown extensions used by `mkdocs`.
-
-        Arguments:
-            config: The MkDocs config object.
-
-        Returns:
-            The modified config.
-        """
-        _log.debug("Adding AutorefsExtension to the list")
-        config.markdown_extensions.append(AutorefsExtension(self))  # type: ignore[arg-type]
-
-        # YORE: Bump 2: Remove block.
-        # mkdocstrings still uses the `page` attribute as a string.
-        # Fortunately, it does so in f-strings, so we can simply patch the `__str__` method
-        # to render the URL.
-        Page.__str__ = lambda page: page.url  # type: ignore[method-assign,attr-defined]
-
-        if self.config.link_titles == "auto":
-            if getattr(config.theme, "name", None) == "material" and "navigation.instant.preview" in config.theme.get(
-                "features",
-                (),
-            ):
-                self._link_titles = "external"
-            else:
-                self._link_titles = True
-        else:
-            self._link_titles = self.config.link_titles
-
-        if self.config.strip_title_tags == "auto":
-            if getattr(config.theme, "name", None) == "material":
-                self._strip_title_tags = False
-            else:
-                self._strip_title_tags = True
-        else:
-            self._strip_title_tags = self.config.strip_title_tags
-
-        return config
-
-    def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
-        """Remember which page is the current one.
-
-        Arguments:
-            markdown: Input Markdown.
-            page: The related MkDocs page instance.
-            kwargs: Additional arguments passed by MkDocs.
-
-        Returns:
-            The same Markdown. We only use this hook to keep a reference to the current page URL,
-                used during Markdown conversion by the anchor scanner tree processor.
-        """
-        # YORE: Bump 2: Remove line.
-        self._url_to_page[page.url] = page
-        self.current_page = page
-        return markdown
-
-    def on_page_content(self, html: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
-        """Map anchors to URLs.
-
-        Hook for the [`on_page_content` event](https://www.mkdocs.org/user-guide/plugins/#on_page_content).
-        In this hook, we map the IDs of every anchor found in the table of contents to the anchors absolute URLs.
-        This mapping will be used later to fix unresolved reference of the form `[title][identifier]` or
-        `[identifier][]`.
-
-        Arguments:
-            html: HTML converted from Markdown.
-            page: The related MkDocs page instance.
-            kwargs: Additional arguments passed by MkDocs.
-
-        Returns:
-            The same HTML. We only use this hook to map anchors to URLs.
-        """
-        self.current_page = page
-        # Collect `std`-domain URLs.
-        if self.scan_toc:
-            _log.debug("Mapping identifiers to URLs for page %s", page.file.src_path)
-            for item in page.toc.items:
-                self.map_urls(page, item)
-        return html
-
-    def map_urls(self, page: Page, anchor: AnchorLink) -> None:
-        """Recurse on every anchor to map its ID to its absolute URL.
-
-        This method populates `self._primary_url_map` by side-effect.
-
-        Arguments:
-            page: The page containing the anchors.
-            anchor: The anchor to process and to recurse on.
-        """
-        # YORE: Bump 2: Remove block.
-        if isinstance(page, str):
-            try:
-                page = self._url_to_page[page]
-            except KeyError:
-                page = self.current_page
-
-        self.register_anchor(page, anchor.id, title=anchor.title, primary=True)
-        for child in anchor.children:
-            self.map_urls(page, child)
-
-    @event_priority(-50)  # Late, after mkdocstrings has finished loading inventories.
-    def on_env(self, env: Environment, /, *, config: MkDocsConfig, files: Files) -> Environment:  # noqa: ARG002
-        """Apply cross-references and collect backlinks.
-
-        Hook for the [`on_env` event](https://www.mkdocs.org/user-guide/plugins/#on_env).
-        In this hook, we try to fix unresolved references of the form `[title][identifier]` or `[identifier][]`.
-        Doing that allows the user of `autorefs` to cross-reference objects in their documentation strings.
-        It uses the native Markdown syntax so it's easy to remember and use.
-
-        We log a warning for each reference that we couldn't map to an URL.
-
-        We also collect backlinks at the same time. We fix cross-refs and collect backlinks in a single pass
-        for performance reasons (we don't want to run the regular expression on each page twice).
-
-        Arguments:
-            env: The MkDocs environment.
-            config: The MkDocs config object.
-            files: The list of files in the MkDocs project.
-
-        Returns:
-            The unmodified environment.
-        """
-        for file in files:
-            if file.page and file.page.content:
-                _log.debug("Applying cross-refs in page %s", file.page.file.src_path)
-
-                # YORE: Bump 2: Replace `, fallback=self.get_fallback_anchor` with `` within line.
-                url_mapper = functools.partial(
-                    self.get_item_url,
-                    from_url=file.page.url,
-                    fallback=self.get_fallback_anchor,
-                )
-                backlink_recorder = (
-                    functools.partial(self._record_backlink, page_url=file.page.url) if self.record_backlinks else None
-                )
-                # YORE: Bump 2: Replace `, _legacy_refs=self.legacy_refs` with `` within line.
-                file.page.content, unmapped = fix_refs(
-                    file.page.content,
-                    url_mapper,
-                    record_backlink=backlink_recorder,
-                    link_titles=self._link_titles,
-                    strip_title_tags=self._strip_title_tags,
-                    _legacy_refs=self.legacy_refs,
-                )
-
-                if unmapped and _log.isEnabledFor(logging.WARNING):
-                    for ref, context in unmapped:
-                        message = f"from {context.filepath}:{context.lineno}: ({context.origin}) " if context else ""
-                        _log.warning(
-                            f"{file.page.file.src_path}: {message}Could not find cross-reference target '{ref}'",
-                        )
-
-        return env
+    # YORE: Bump 2: Remove block.
+    @get_fallback_anchor.setter
+    def get_fallback_anchor(self, value: Callable[[str], tuple[str, ...]] | None) -> None:
+        """Fallback anchors setter."""
+        self._get_fallback_anchor = value
+        if value is not None:
+            warn(
+                "Setting a fallback anchor function is deprecated and will be removed in a future release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
