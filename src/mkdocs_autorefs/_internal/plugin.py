@@ -20,6 +20,7 @@ from warnings import warn
 from mkdocs.config.base import Config
 from mkdocs.config.config_options import Choice, Type
 from mkdocs.plugins import BasePlugin, event_priority
+from mkdocs.structure.pages import Page
 
 from mkdocs_autorefs._internal.backlinks import Backlink, BacklinkCrumb
 from mkdocs_autorefs._internal.references import AutorefsExtension, fix_refs, relative_url
@@ -31,7 +32,6 @@ if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
     from mkdocs.structure.files import Files
     from mkdocs.structure.nav import Section
-    from mkdocs.structure.pages import Page
     from mkdocs.structure.toc import AnchorLink
 
 try:
@@ -381,6 +381,12 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         """
         _log.debug("Adding AutorefsExtension to the list")
         config.markdown_extensions.append(AutorefsExtension(self))  # type: ignore[arg-type]
+
+        # YORE: Bump 2: Remove block.
+        # mkdocstrings still uses the `page` attribute as a string.
+        # Fortunately, it does so in f-strings, so we can simply patch the `__str__` method
+        # to render the URL.
+        Page.__str__ = lambda page: page.url  # type: ignore[method-assign,attr-defined]
 
         if self.config.link_titles == "auto":
             if getattr(config.theme, "name", None) == "material" and "navigation.instant.preview" in config.theme.get(
