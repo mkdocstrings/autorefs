@@ -9,7 +9,8 @@ authors = [
     {name = "Oleh Prypin", email = "oleh@pryp.in"},
     {name = "Timothée Mazzucotelli", email = "dev@pawamoy.fr"},
 ]
-license = {text = "ISC"}
+license = "ISC"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.9"
 keywords = ["mkdocs", "mkdocs-plugin", "docstrings", "autodoc"]
@@ -17,7 +18,6 @@ dynamic = ["version"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: ISC License (ISCL)",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -106,8 +106,10 @@ dev = [
     "mkdocs-gen-files>=0.5",
     "mkdocs-git-revision-date-localized-plugin>=1.2",
     "mkdocs-literate-nav>=0.6",
+    "mkdocs-llmstxt>=0.1",
     "mkdocs-material>=9.5",
     "mkdocs-minify-plugin>=0.8",
+    "mkdocs-section-index>=0.3",
     "mkdocstrings[python]>=0.25",
     # YORE: EOL 3.10: Remove line.
     "tomli>=2.0; python_version < '3.11'",
