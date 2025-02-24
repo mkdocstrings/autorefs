@@ -6,9 +6,8 @@ from textwrap import dedent
 
 from markdown import Markdown
 
-from mkdocs_autorefs.backlinks import Backlink, BacklinkCrumb
-from mkdocs_autorefs.plugin import AutorefsPlugin
-from mkdocs_autorefs.references import AUTOREF_RE, AutorefsExtension, _html_attrs_parser
+from mkdocs_autorefs import AUTOREF_RE, AutorefsExtension, AutorefsPlugin, Backlink, BacklinkCrumb
+from mkdocs_autorefs._internal.references import _html_attrs_parser
 from tests.helpers import create_page
 
 

@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING, Any
 import markdown
 import pytest
 
-from mkdocs_autorefs.plugin import AutorefsPlugin
-from mkdocs_autorefs.references import AutorefsExtension, AutorefsHookInterface, fix_refs, relative_url
+from mkdocs_autorefs import AutorefsExtension, AutorefsHookInterface, AutorefsPlugin, fix_refs, relative_url
 from tests.helpers import create_page
 
 if TYPE_CHECKING:

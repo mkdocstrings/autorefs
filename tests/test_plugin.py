@@ -9,8 +9,7 @@ import pytest
 from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.theme import Theme
 
-from mkdocs_autorefs.plugin import AutorefsConfig, AutorefsPlugin
-from mkdocs_autorefs.references import fix_refs
+from mkdocs_autorefs import AutorefsConfig, AutorefsPlugin, fix_refs
 from tests.helpers import create_page
 
 

@@ -152,10 +152,15 @@ def test_inventory_matches_api(
     not_in_api = []
     public_api_paths = {obj.path for obj in public_objects}
     public_api_paths.add("mkdocs_autorefs")
+    ignore = {"mkdocs_autorefs.plugin", "mkdocs_autorefs.references"}
     for item in inventory.values():
         if item.domain == "py" and "(" not in item.name:
             obj = loader.modules_collection[item.name]
-            if obj.path not in public_api_paths and not any(path in public_api_paths for path in obj.aliases):
+            if (
+                obj.path not in ignore
+                and obj.path not in public_api_paths
+                and not any(path in public_api_paths for path in obj.aliases)
+            ):
                 not_in_api.append(item.name)
     msg = "Inventory objects not in public API (try running `make run mkdocs build`):\n{paths}"
     assert not not_in_api, msg.format(paths="\n".join(sorted(not_in_api)))
@@ -174,4 +179,4 @@ def test_no_module_docstrings_in_internal_api(internal_api: griffe.Module) -> No
             yield from _modules(member)
 
     for obj in _modules(internal_api):
-        assert not obj.docstring
+        assert not obj.docstring, f"Object {obj.path} has a docstring."

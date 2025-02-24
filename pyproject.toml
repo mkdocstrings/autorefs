@@ -49,7 +49,7 @@ Discussions = "https://github.com/mkdocstrings/autorefs/discussions"
 Gitter = "https://gitter.im/mkdocstrings/autorefs"
 
 [project.entry-points."mkdocs.plugins"]
-autorefs = "mkdocs_autorefs.plugin:AutorefsPlugin"
+autorefs = "mkdocs_autorefs:AutorefsPlugin"
 
 [tool.pdm.version]
 source = "call"
