@@ -55,8 +55,16 @@ jobs:
     - name: Check for breaking changes in the API
       run: make check-api
 
+    - name: Store objects inventory for tests
+      uses: actions/upload-artifact@v4
+      with:
+        name: objects.inv
+        path: site/objects.inv
+
   tests:
 
+    needs:
+    - quality
     strategy:
       matrix:
         os:
@@ -105,6 +113,12 @@ jobs:
       env:
         UV_RESOLUTION: ${{ matrix.resolution }}
       run: make setup
+
+    - name: Download objects inventory
+      uses: actions/download-artifact@v4
+      with:
+        name: objects.inv
+        path: site/
 
     - name: Run the test suite
       run: make test
