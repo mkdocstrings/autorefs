@@ -434,7 +434,8 @@ def relative_url(url_a: str, url_b: str) -> str:
         The relative URL to go from A to B.
     """
     parts_a = url_a.split("/")
-    url_b, anchor = url_b.split("#", 1)
+    url_b, *rest = url_b.split("#", 1)
+    anchor = rest[0] if rest else ""
     parts_b = url_b.split("/")
 
     # Remove common left parts.
