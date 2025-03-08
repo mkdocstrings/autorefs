@@ -79,26 +79,25 @@ data = [
 ]
 
 [dependency-groups]
-dev = [
-    # maintenance
+maintain = [
     "build>=1.2",
     "git-changelog>=2.5",
     "twine>=5.1",
-
-    # ci
-    "duty>=1.4",
-    "ruff>=0.4",
+    "yore>=0.3.3",
+]
+ci = [
+    "duty>=1.6",
+    "mypy>=1.10",
+    "pymdown-extensions>=10.14",
     "pytest>=8.2",
     "pytest-cov>=5.0",
     "pytest-randomly>=3.15",
     "pytest-xdist>=3.6",
-    "mypy>=1.10",
+    "ruff>=0.4",
     "types-markdown>=3.6",
     "types-pyyaml>=6.0",
-    "pymdown-extensions>=10.14",
-
-    # docs
-    "black>=24.4",
+]
+ docs = [
     "markdown-callouts>=0.4",
     "markdown-exec>=1.8",
     "mkdocs>=1.6",
@@ -111,3 +110,6 @@ dev = [
     # YORE: EOL 3.10: Remove line.
     "tomli>=2.0; python_version < '3.11'",
 ]
+
+[tool.uv]
+default-groups = ["maintain", "ci", "docs"]
