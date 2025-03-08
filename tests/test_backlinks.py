@@ -8,7 +8,7 @@ from markdown import Markdown
 
 from mkdocs_autorefs import AUTOREF_RE, AutorefsExtension, AutorefsPlugin, Backlink, BacklinkCrumb
 from mkdocs_autorefs._internal.references import _html_attrs_parser
-from tests.helpers import create_page
+from tests.helpers import create_anchor_link, create_page
 
 
 def test_record_backlinks() -> None:
@@ -26,17 +26,11 @@ def test_get_backlinks() -> None:
     """Check that backlinks can be retrieved."""
     plugin = AutorefsPlugin()
     plugin.record_backlinks = True
-    plugin.register_anchor(identifier="foo", page=create_page("foo.html"), primary=True)
-    plugin._record_backlink("foo", "referenced-by", "foo", "foo.html")
-    assert plugin.get_backlinks("foo", from_url="") == {
-        "referenced-by": {
-            Backlink(
-                crumbs=(
-                    BacklinkCrumb(title="foo.html", url="foo.html#"),
-                    BacklinkCrumb(title="", url="foo.html#foo"),
-                ),
-            ),
-        },
+    plugin.map_urls(create_page("foo.html"), create_anchor_link("Foo", "foo"))
+    plugin._primary_url_map["bar"] = ["bar.html#bar"]
+    plugin._record_backlink("bar", "referenced-by", "foo", "foo.html")
+    assert plugin.get_backlinks("bar", from_url="") == {
+        "referenced-by": {Backlink(crumbs=(BacklinkCrumb(title="Foo", url="foo.html#foo", parent=None),))},
     }
 
 

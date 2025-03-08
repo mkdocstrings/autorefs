@@ -25,14 +25,21 @@ except ImportError:
     _log = logging.getLogger(f"mkdocs.plugins.{__name__}")  # type: ignore[assignment]
 
 
-@dataclass(eq=True, frozen=True, order=True)
+@dataclass(frozen=True, order=True)
 class BacklinkCrumb:
     """A navigation breadcrumb for a backlink."""
 
     title: str
-    """The title of the page."""
+    """The title of the breadcrumb."""
     url: str
-    """The URL of the page."""
+    """The URL of the breadcrumb."""
+    parent: BacklinkCrumb | None = None
+    """The parent breadcrumb."""
+
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, BacklinkCrumb):
+            return self.url == value.url
+        return False
 
 
 @dataclass(eq=True, frozen=True, order=True)

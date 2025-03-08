@@ -141,7 +141,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
         self._primary_url_map: dict[str, list[str]] = {}
         self._secondary_url_map: dict[str, list[str]] = {}
         self._title_map: dict[str, str] = {}
-        self._backlink_page_map: dict[str, Page] = {}
+        self._breadcrumbs_map: dict[str, BacklinkCrumb] = {}
         self._abs_url_map: dict[str, str] = {}
         self._backlinks: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
         # YORE: Bump 2: Remove line.
@@ -299,6 +299,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
     # ----------------------------------------------------------------------- #
     # Utilities                                                               #
     # ----------------------------------------------------------------------- #
+    # TODO: Maybe stop exposing this method in the future.
     def map_urls(self, page: Page, anchor: AnchorLink) -> None:
         """Recurse on every anchor to map its ID to its absolute URL.
 
@@ -308,6 +309,9 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             page: The page containing the anchors.
             anchor: The anchor to process and to recurse on.
         """
+        return self._map_urls(page, anchor)
+
+    def _map_urls(self, page: Page, anchor: AnchorLink, parent: BacklinkCrumb | None = None) -> None:
         # YORE: Bump 2: Remove block.
         if isinstance(page, str):
             try:
@@ -316,8 +320,36 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                 page = self.current_page
 
         self.register_anchor(page, anchor.id, title=anchor.title, primary=True)
+        breadcrumb = self._get_breadcrumb(page, anchor, parent)
         for child in anchor.children:
-            self.map_urls(page, child)
+            self._map_urls(page, child, breadcrumb)
+
+    def _get_breadcrumb(
+        self,
+        page: Page | Section,
+        anchor: AnchorLink | None = None,
+        parent: BacklinkCrumb | None = None,
+    ) -> BacklinkCrumb:
+        parent_breadcrumb = None if page.parent is None else self._get_breadcrumb(page.parent)
+        if parent is None:
+            if isinstance(page, Page):
+                if (parent_url := page.url) not in self._breadcrumbs_map:
+                    self._breadcrumbs_map[parent_url] = BacklinkCrumb(
+                        title=page.title,
+                        url=parent_url,
+                        parent=parent_breadcrumb,
+                    )
+                parent = self._breadcrumbs_map[parent_url]
+            else:
+                parent = BacklinkCrumb(title=page.title, url="", parent=parent_breadcrumb)
+        if anchor is None:
+            return parent
+        if (url := f"{page.url}#{anchor.id}") not in self._breadcrumbs_map:  # type: ignore[union-attr]
+            # Skip the parent page if the anchor is a top-level heading, to reduce repetition.
+            if anchor.level == 1:
+                parent = parent.parent
+            self._breadcrumbs_map[url] = BacklinkCrumb(title=anchor.title, url=url, parent=parent)
+        return self._breadcrumbs_map[url]
 
     def _record_backlink(self, identifier: str, backlink_type: str, backlink_anchor: str, page_url: str) -> None:
         """Record a backlink.
@@ -351,23 +383,22 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             backlinks = self._backlinks.get(identifier, {})
             for backlink_type, backlink_urls in backlinks.items():
                 for backlink_url in backlink_urls:
-                    relative_backlinks[backlink_type].add(self._crumbs(from_url, backlink_url))
+                    relative_backlinks[backlink_type].add(self._get_backlink(from_url, backlink_url))
         return relative_backlinks
 
-    def _crumbs(self, from_url: str, backlink_url: str) -> Backlink:
-        backlink_page: Page = self._backlink_page_map[backlink_url]
-        backlink_title = self._title_map.get(backlink_url, "")
-        crumbs: list[BacklinkCrumb] = [
-            BacklinkCrumb(backlink_title, relative_url(from_url, backlink_url)),
-            BacklinkCrumb(backlink_page.title, relative_url(from_url, backlink_page.url + "#")),
-        ]
-        page: Page | Section = backlink_page
-        while page.parent:
-            page = page.parent
-            if url := getattr(page, "url", ""):
-                url = relative_url(from_url, url + "#")
-            crumbs.append(BacklinkCrumb(page.title, url))
-        return Backlink(tuple(reversed(crumbs)))
+    def _get_backlink(self, from_url: str, backlink_url: str) -> Backlink:
+        breadcrumbs = []
+        breadcrumb: BacklinkCrumb | None = self._breadcrumbs_map[backlink_url]
+        while breadcrumb:
+            breadcrumbs.append(
+                BacklinkCrumb(
+                    title=breadcrumb.title,
+                    url=breadcrumb.url and relative_url(from_url, breadcrumb.url),
+                    parent=breadcrumb.parent,
+                ),
+            )
+            breadcrumb = breadcrumb.parent
+        return Backlink(tuple(reversed(breadcrumbs)))
 
     def register_anchor(
         self,
@@ -403,8 +434,6 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             url_map[identifier] = [url]
         if title and url not in self._title_map:
             self._title_map[url] = title
-        if self.record_backlinks and url not in self._backlink_page_map:
-            self._backlink_page_map[url] = page
 
     def register_url(self, identifier: str, url: str) -> None:
         """Register that the identifier should be turned into a link to this URL.
