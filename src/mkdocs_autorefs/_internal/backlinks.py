@@ -37,6 +37,7 @@ class BacklinkCrumb:
     """The parent breadcrumb."""
 
     def __eq__(self, value: object) -> bool:
+        """Compare URLs for equality."""
         if isinstance(value, BacklinkCrumb):
             return self.url == value.url
         return False
