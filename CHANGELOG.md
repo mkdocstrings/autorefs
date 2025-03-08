@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.4.1](https://github.com/mkdocstrings/autorefs/releases/tag/1.4.1) - 2025-03-08
+
+<small>[Compare with 1.4.0](https://github.com/mkdocstrings/autorefs/compare/1.4.0...1.4.1)</small>
+
+### Code Refactoring
+
+- Store parent pages *and parent sections* in backlink breadcrumbs ([67955ce](https://github.com/mkdocstrings/autorefs/commit/67955ce5bf6b1b2cbea9c78b459e980f17bececc) by Timothée Mazzucotelli).
+- Ignore Markdown anchors when setting backlink metadata on autorefs ([3ac4797](https://github.com/mkdocstrings/autorefs/commit/3ac47979c0371ba53e623284c76bb29985ee7037) by Timothée Mazzucotelli).
+- Handle absence of `#` when computing relative URLs ([ca6461e](https://github.com/mkdocstrings/autorefs/commit/ca6461ebdb006897b012d1b92692ffffe9445ed2) by Timothée Mazzucotelli).
+
 ## [1.4.0](https://github.com/mkdocstrings/autorefs/releases/tag/1.4.0) - 2025-02-24
 
 <small>[Compare with 1.3.1](https://github.com/mkdocstrings/autorefs/compare/1.3.1...1.4.0)</small>
