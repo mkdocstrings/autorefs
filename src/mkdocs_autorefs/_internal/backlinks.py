@@ -78,10 +78,7 @@ class BacklinksTreeProcessor(Treeprocessor):
 
     def _enhance_autorefs(self, parent: Element) -> None:
         for el in parent:
-            if el.tag == "a":  # Markdown anchor.
-                if not (el.text or el.get("href") or (el.tail and el.tail.strip())) and (anchor_id := el.get("id")):
-                    self._last_heading_id = anchor_id
-            elif el.tag in self._htags:  # Heading.
+            if el.tag in self._htags:
                 self._last_heading_id = el.get("id")
             elif el.tag == "autoref":
                 if "backlink-type" not in el.attrib:
