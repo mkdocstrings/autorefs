@@ -2,34 +2,34 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://mkdocstrings.github.io/autorefs/</loc>
-         <lastmod>2025-02-24</lastmod>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://mkdocstrings.github.io/autorefs/changelog/</loc>
-         <lastmod>2025-02-24</lastmod>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://mkdocstrings.github.io/autorefs/code_of_conduct/</loc>
-         <lastmod>2025-02-24</lastmod>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://mkdocstrings.github.io/autorefs/contributing/</loc>
-         <lastmod>2025-02-24</lastmod>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://mkdocstrings.github.io/autorefs/credits/</loc>
-         <lastmod>2025-02-24</lastmod>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://mkdocstrings.github.io/autorefs/license/</loc>
-         <lastmod>2025-02-24</lastmod>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
-         <loc>https://mkdocstrings.github.io/autorefs/reference/mkdocs_autorefs/</loc>
-         <lastmod>2025-02-24</lastmod>
+         <loc>https://mkdocstrings.github.io/autorefs/reference/api/</loc>
+         <lastmod>2025-05-20</lastmod>
     </url>
     <url>
          <loc>https://mkdocstrings.github.io/autorefs/coverage/</loc>
-         <lastmod>2025-02-24</lastmod>
+         <lastmod>2025-05-20</lastmod>
     </url>
 </urlset>
