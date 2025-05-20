@@ -19,7 +19,7 @@ nav:
   - Changelog: changelog.md
   - Credits: credits.md
   - License: license.md
-- API reference: reference/mkdocs_autorefs.md
+- API reference: reference/api.md
 - Development:
   - Contributing: contributing.md
   - Code of Conduct: code_of_conduct.md
@@ -97,9 +97,10 @@ markdown_extensions:
     permalink: "¤"
 
 plugins:
-- autorefs
 - search
+- autorefs
 - markdown-exec
+- section-index
 - coverage
 - mkdocstrings:
     handlers:
@@ -110,6 +111,7 @@ plugins:
         - https://python-markdown.github.io/objects.inv
         paths: [src]
         options:
+          backlinks: tree
           docstring_options:
             ignore_init_summary: true
           docstring_section_style: list
@@ -127,11 +129,12 @@ plugins:
           signature_crossrefs: true
           summary: true
 - llmstxt:
-    files:
-    - output: llms-full.txt
-      inputs:
+    full_output: llms-full.txt
+    sections:
+      Usage:
       - index.md
-      - reference/**.md
+      API:
+      - reference/api.md
 - git-revision-date-localized:
     enabled: !ENV [DEPLOY, false]
     enable_creation_date: true

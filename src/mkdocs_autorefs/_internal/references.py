@@ -190,7 +190,7 @@ class AutorefsInlineProcessor(ReferenceInlineProcessor):
                     if match := HTML_PLACEHOLDER_RE.fullmatch(identifier):
                         stash_index = int(match.group(1))
                         html = self.md.htmlStash.rawHtmlBlocks[stash_index]
-                        identifier = Markup(html).striptags()
+                        identifier = Markup(html).striptags()  # noqa: S704
                         self.md.htmlStash.rawHtmlBlocks[stash_index] = escape(identifier)
 
             # In any other case, unstash the title and slugify it.

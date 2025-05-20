@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import griffe
 import pytest
-from mkdocstrings.inventory import Inventory
+from mkdocstrings import Inventory
 
 import mkdocs_autorefs
 
@@ -154,7 +154,11 @@ def test_inventory_matches_api(
     public_api_paths.add("mkdocs_autorefs")
     ignore = {"mkdocs_autorefs.plugin", "mkdocs_autorefs.references"}
     for item in inventory.values():
-        if item.domain == "py" and "(" not in item.name:
+        if (
+            item.domain == "py"
+            and "(" not in item.name
+            and (item.name == "mkdocs_autorefs" or item.name.startswith("mkdocs_autorefs."))
+        ):
             obj = loader.modules_collection[item.name]
             if (
                 obj.path not in ignore
