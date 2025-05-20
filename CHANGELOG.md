@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.4.2](https://github.com/mkdocstrings/autorefs/releases/tag/1.4.2) - 2025-05-20
+
+<small>[Compare with 1.4.1](https://github.com/mkdocstrings/autorefs/compare/1.4.1...1.4.2)</small>
+
+### Build
+
+- Exclude mypy cache from dists ([5e77f7f](https://github.com/mkdocstrings/autorefs/commit/5e77f7fdbd79d4aca6473e9224270752ed9b9165) by Timothée Mazzucotelli). [Issue-71](https://github.com/mkdocstrings/autorefs/issues/71)
+
 ## [1.4.1](https://github.com/mkdocstrings/autorefs/releases/tag/1.4.1) - 2025-03-08
 
 <small>[Compare with 1.4.0](https://github.com/mkdocstrings/autorefs/compare/1.4.0...1.4.1)</small>
