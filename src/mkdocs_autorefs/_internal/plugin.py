@@ -317,7 +317,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             try:
                 page = self._url_to_page[page]
             except KeyError:
-                page = self.current_page
+                page = self.current_page  # type: ignore[assignment]
 
         self.register_anchor(page, anchor.id, title=anchor.title, primary=True)
         breadcrumb = self._get_breadcrumb(page, anchor, parent)
@@ -427,7 +427,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             try:
                 page = self._url_to_page[page]
             except KeyError:
-                page = self.current_page
+                page = self.current_page  # type: ignore[assignment]
 
         url = f"{page.url}#{anchor or identifier}"
         url_map = self._primary_url_map if primary else self._secondary_url_map

@@ -26,7 +26,7 @@ except ImportError:
 
 
 @dataclass(frozen=True, order=True)
-class BacklinkCrumb:
+class BacklinkCrumb:  # noqa: PLW1641
     """A navigation breadcrumb for a backlink."""
 
     title: str
