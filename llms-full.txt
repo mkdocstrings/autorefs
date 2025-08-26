@@ -12,7 +12,6 @@ Automatically link across pages in MkDocs.
 
 ```
 pip install mkdocs-autorefs
-
 ```
 
 ## Usage
@@ -22,7 +21,6 @@ pip install mkdocs-autorefs
 plugins:
 - search
 - autorefs
-
 ```
 
 In one of your Markdown files (e.g. `doc1.md`) create some headings:
@@ -33,7 +31,6 @@ In one of your Markdown files (e.g. `doc1.md`) create some headings:
 ## Another heading
 
 Link to [Hello, World!](#hello-world) on the same page.
-
 ```
 
 This is a [*normal* link to an anchor](https://www.mkdocs.org/user-guide/writing-your-docs/#linking-to-pages). MkDocs generates anchors for each heading, and they can always be used to link to something, either within the same page (as shown here) or by specifying the path of the other page.
@@ -46,7 +43,6 @@ Let's create another Markdown page to try this, `subdir/doc2.md`:
 We can [link to that heading][hello-world] from another page too.
 
 This works the same as [a normal link to that heading](../doc1.md#hello-world).
-
 ```
 
 Linking to a heading without needing to know the destination page can be useful if specifying that path is cumbersome, e.g. when the pages have deeply nested paths, are far apart, or are moved around frequently.
@@ -63,7 +59,6 @@ If you cannot use Markdown anchors, for example because you inject the same gene
 plugins:
 - autorefs:
     resolve_closest: true
-
 ```
 
 When `resolve_closest` is enabled, and multiple URLs are found for the same identifier, the plugin will try to resolve to the one that is "closest" to the current page (the page containing the link). By closest, we mean:
@@ -75,7 +70,13 @@ If multiple relative URLs are at the same distance, the first of these URLs will
 
 Examples:
 
-| Current page | Candidate URLs | Relative URLs | Winner | | --- | --- | --- | --- | | | `x/#b`, `#b` | `#b` | `#b` (only one relative) | | `a/` | `b/c/#d`, `c/#d` | none | `b/c/#d` (no relative, use first one, even if longer distance) | | `a/b/` | `x/#e`, `a/c/#e`, `a/d/#e` | `a/c/#e`, `a/d/#e` (relative to parent `a/`) | `a/c/#e` (same distance, use first one) | | `a/b/` | `x/#e`, `a/c/d/#e`, `a/c/#e` | `a/c/d/#e`, `a/c/#e` (relative to parent `a/`) | `a/c/#e` (shortest distance) | | `a/b/c/` | `x/#e`, `a/#e`, `a/b/#e`, `a/b/c/d/#e`, `a/b/c/#e` | `a/b/c/d/#e`, `a/b/c/#e` | `a/b/c/#e` (shortest distance) |
+| Current page | Candidate URLs                                     | Relative URLs                                  | Winner                                                         |
+| ------------ | -------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------- |
+|              | `x/#b`, `#b`                                       | `#b`                                           | `#b` (only one relative)                                       |
+| `a/`         | `b/c/#d`, `c/#d`                                   | none                                           | `b/c/#d` (no relative, use first one, even if longer distance) |
+| `a/b/`       | `x/#e`, `a/c/#e`, `a/d/#e`                         | `a/c/#e`, `a/d/#e` (relative to parent `a/`)   | `a/c/#e` (same distance, use first one)                        |
+| `a/b/`       | `x/#e`, `a/c/d/#e`, `a/c/#e`                       | `a/c/d/#e`, `a/c/#e` (relative to parent `a/`) | `a/c/#e` (shortest distance)                                   |
+| `a/b/c/`     | `x/#e`, `a/#e`, `a/b/#e`, `a/b/c/d/#e`, `a/b/c/#e` | `a/b/c/d/#e`, `a/b/c/#e`                       | `a/b/c/#e` (shortest distance)                                 |
 
 ### Markdown anchors
 
@@ -85,7 +86,6 @@ The syntax is:
 
 ```
 [](){ #id-of-the-anchor }
-
 ```
 
 If you look closely, it starts with the usual syntax for a link, `[]()`, except both the text value and URL of the link are empty. Then we see `{ #id-of-the-anchor }`, which is the syntax supported by the [`attr_list`](https://python-markdown.github.io/extensions/attr_list/) extension. It sets an HTML id to the anchor element. The autorefs plugin simply gives a meaning to such anchors with ids. Note that raw HTML anchors like `<a id="foo"></a>` are not supported.
@@ -100,7 +100,6 @@ plugins:
 
 markdown_extensions:
 - attr_list
-
 ```
 
 Now, you can add anchors to documents:
@@ -111,7 +110,6 @@ Somewhere in a document.
 [](){ #foobar-paragraph }
 
 Paragraph about foobar.
-
 ```
 
 ...making it possible to link to this anchor with our automatic links:
@@ -120,7 +118,6 @@ Paragraph about foobar.
 In any document.
 
 Check out the [paragraph about foobar][foobar-paragraph].
-
 ```
 
 If you add a Markdown anchor right above a heading, this anchor will redirect to the heading itself:
@@ -128,7 +125,6 @@ If you add a Markdown anchor right above a heading, this anchor will redirect to
 ```
 [](){ #foobar }
 ## A verbose title about foobar
-
 ```
 
 Linking to the `foobar` anchor will bring you directly to the heading, not the anchor itself, so the URL will show `#a-verbose-title-about-foobar` instead of `#foobar`. These anchors therefore act as "aliases" for headings. It is possible to define multiple aliases per heading:
@@ -137,7 +133,6 @@ Linking to the `foobar` anchor will bring you directly to the heading, not the a
 [](){ #contributing }
 [](){ #development-setup }
 ## How to contribute to the project?
-
 ```
 
 Such aliases are especially useful when the same headings appear in several different pages. Without aliases, linking to the heading is undefined behavior (it could lead to any one of the headings). With unique aliases above headings, you can make sure to link to the right heading.
@@ -150,7 +145,6 @@ For example, consider the following setup. You have one document per operating s
     ├──  arch.md
     ├──  debian.md
     └──  gentoo.md
-
 ```
 
 Each page has:
@@ -161,7 +155,6 @@ Each page has:
 
 ## Install from sources
 ...
-
 ```
 
 You don't want to change headings and make them redundant, like `## Arch: Install with package manager` and `## Debian: Install with package manager` just to be able to reference the right one with autorefs. Instead you can do this:
@@ -174,7 +167,6 @@ You don't want to change headings and make them redundant, like `## Arch: Instal
 [](){ #arch-install-src }
 ## Install from sources
 ...
-
 ```
 
 ...changing `arch` by `debian`, `gentoo`, etc. in the other pages.
@@ -186,7 +178,6 @@ You can also change the actual identifier of a heading, thanks again to the `att
 ```
 ## Install from sources { #arch-install-src }
 ...
-
 ```
 
 ...though note that this will impact the URL anchor too (and therefore the permalink to the heading).
@@ -206,7 +197,6 @@ plugins:
     # link_titles: true
     # link_titles: false
     # link_titles: auto  # default
-
 ```
 
 By default, HTML tags are only preserved in titles if the current theme in use is Material for MkDocs and its `content.tooltips` feature is enabled. If your chosen theme does support HTML tags in titles, you can prevent tags stripping with the `strip_title_tags` option:
@@ -217,7 +207,6 @@ plugins:
     strip_title_tags: false
     # strip_title_tags: true
     # strip_title_tags: auto  # default
-
 ```
 
 ### Backlinks
@@ -234,7 +223,6 @@ This is page foo.
 ## Section
 
 This section references [some heading][heading].
-
 ```
 
 The `record_backlinks` attribute of the autorefs plugin must be set to true before Markdown is rendered to HTML to enable backlinks recording. This is typically done in an `on_config` MkDocs hook:
@@ -246,7 +234,6 @@ from mkdocs.config.defaults import MkDocsConfig
 def on_config(config: MkDocsConfig) -> MkDocsConfig | None:
     config.plugins["autorefs"].record_backlinks = True
     return config
-
 ```
 
 Note that for backlinks to be recorded with accurate URLs, headings must have HTML IDs, meaning either the `toc` extension must be enabled, or the `attr_list` extension must be enabled *and* authors must add IDs to the relevant headings, with the `## Heading { #heading-id }` syntax.
@@ -255,7 +242,6 @@ Other plugins or systems integrating with the autorefs plugin can then retrieve 
 
 ```
 backlinks = autorefs_plugin.get_backlinks("heading")
-
 ```
 
 The `get_backlinks` method returns a map of backlink types to sets of backlinks. A backlink is a tuple of navigation breadcrumbs, each breadcrumb having a title and URL.
@@ -271,14 +257,12 @@ print(backlinks)
 #          ),
 #      ),
 #  }
-
 ```
 
 The default backlink type is `referenced-by`, but can be customized by other plugins or systems thanks to the `backlink-type` HTML data attribute on `autoref` elements. Such plugins and systems can also specify the anchor on the current page to use for the backlink with the `backlink-anchor` HTML data attribute on `autoref` elements.
 
 ```
 <autoref identifier="heading" backlink-type="mentionned-by" backlink-anchor="section-paragraph">
-
 ```
 
 This feature is typically designed for use in [mkdocstrings](https://mkdocstrings.github.io/) handlers, though is not exclusive to mkdocstrings: it can be used by any other plugin or even author hooks. Such a hook is provided as an example here:
@@ -317,7 +301,6 @@ def _render_backlinks(backlinks):
             yield "</li>"
         yield "</ul>"
     yield "</div>"
-
 ```
 # API
 
@@ -362,7 +345,6 @@ AUTOREF_RE = compile(
     "<autoref (?P<attrs>.*?)>(?P<title>.*?)</autoref>",
     flags=DOTALL,
 )
-
 ```
 
 The autoref HTML tag regular expression.
@@ -376,7 +358,6 @@ AUTO_REF_RE = compile(
     f"<span data-(?P<kind>autorefs-(?:identifier|optional|optional-hover))=(?P<identifier>{_ATTR_VALUE})(?: class=(?P<class>{_ATTR_VALUE}))?(?P<attrs> [^<>]+)?>(?P<title>.*?)</span>",
     flags=DOTALL,
 )
-
 ```
 
 Deprecated. Use AUTOREF_RE instead.
@@ -387,7 +368,6 @@ Deprecated. Use AUTOREF_RE instead.
 AnchorScannerTreeProcessor(
     plugin: AutorefsPlugin, md: Markdown | None = None
 )
-
 ```
 
 Bases: `Treeprocessor`
@@ -417,14 +397,12 @@ def __init__(self, plugin: AutorefsPlugin, md: Markdown | None = None) -> None:
     """
     super().__init__(md)
     self._plugin = plugin
-
 ```
 
 ### name
 
 ```
 name: str = 'mkdocs-autorefs-anchors-scanner'
-
 ```
 
 The name of the tree processor.
@@ -433,7 +411,6 @@ The name of the tree processor.
 
 ```
 run(root: Element) -> None
-
 ```
 
 Run the tree processor.
@@ -455,7 +432,6 @@ def run(self, root: Element) -> None:
         pending_anchors = _PendingAnchors(self._plugin)
         self._scan_anchors(root, pending_anchors)
         pending_anchors.flush()
-
 ```
 
 ## AutorefsConfig
@@ -476,7 +452,6 @@ Attributes:
 link_titles: bool | Literal["auto", "external"] = Choice(
     (True, False, "auto", "external"), default="auto"
 )
-
 ```
 
 Whether to set titles on links.
@@ -494,7 +469,6 @@ Titles are only set when they are different from the link's text. Titles are con
 
 ```
 resolve_closest: bool = Type(bool, default=False)
-
 ```
 
 Whether to resolve an autoref to the closest URL when multiple URLs are found for an identifier.
@@ -513,7 +487,6 @@ When false and multiple URLs are found for an identifier, autorefs will log a wa
 strip_title_tags: bool | Literal["auto"] = Choice(
     (True, False, "auto"), default="auto"
 )
-
 ```
 
 Whether to strip HTML tags from link titles.
@@ -528,7 +501,6 @@ Some themes support HTML in link titles, but others do not.
 AutorefsExtension(
     plugin: AutorefsPlugin | None = None, **kwargs: Any
 )
-
 ```
 
 Bases: `Extension`
@@ -569,14 +541,12 @@ def __init__(
     super().__init__(**kwargs)
     self.plugin = plugin
     """A reference to the autorefs plugin."""
-
 ```
 
 ### plugin
 
 ```
 plugin = plugin
-
 ```
 
 A reference to the autorefs plugin.
@@ -585,7 +555,6 @@ A reference to the autorefs plugin.
 
 ```
 extendMarkdown(md: Markdown) -> None
-
 ```
 
 Register the extension.
@@ -633,7 +602,6 @@ def extendMarkdown(self, md: Markdown) -> None:  # noqa: N802 (casing: parent me
                 BacklinksTreeProcessor.name,
                 priority=0,
             )
-
 ```
 
 ## AutorefsHookInterface
@@ -661,7 +629,6 @@ Context(
     filepath: str | Path,
     lineno: int,
 )
-
 ```
 
 The context around an auto-reference.
@@ -682,7 +649,6 @@ Attributes:
 
 ```
 domain: str
-
 ```
 
 A domain like `py` or `js`.
@@ -691,7 +657,6 @@ A domain like `py` or `js`.
 
 ```
 filepath: str | Path
-
 ```
 
 The path to the file containing the autoref.
@@ -700,7 +665,6 @@ The path to the file containing the autoref.
 
 ```
 lineno: int
-
 ```
 
 The line number in the file containing the autoref.
@@ -709,7 +673,6 @@ The line number in the file containing the autoref.
 
 ```
 origin: str
-
 ```
 
 The origin of an autoref (an object identifier).
@@ -718,7 +681,6 @@ The origin of an autoref (an object identifier).
 
 ```
 role: str
-
 ```
 
 A role like `class` or `function`.
@@ -727,7 +689,6 @@ A role like `class` or `function`.
 
 ```
 as_dict() -> dict[str, str]
-
 ```
 
 Convert the context to a dictionary of HTML attributes.
@@ -744,14 +705,12 @@ def as_dict(self) -> dict[str, str]:
         "filepath": str(self.filepath),
         "lineno": str(self.lineno),
     }
-
 ```
 
 ### expand_identifier
 
 ```
 expand_identifier(identifier: str) -> str
-
 ```
 
 Expand an identifier in a given context.
@@ -778,14 +737,12 @@ def expand_identifier(self, identifier: str) -> str:
         The expanded identifier.
     """
     raise NotImplementedError
-
 ```
 
 ### get_context
 
 ```
 get_context() -> Context
-
 ```
 
 Get the current context.
@@ -805,14 +762,12 @@ def get_context(self) -> AutorefsHookInterface.Context:
         The current context.
     """
     raise NotImplementedError
-
 ```
 
 ## AutorefsInlineProcessor
 
 ```
 AutorefsInlineProcessor(*args: Any, **kwargs: Any)
-
 ```
 
 Bases: `ReferenceInlineProcessor`
@@ -833,14 +788,12 @@ Source code in `src/mkdocs_autorefs/_internal/references.py`
 ```
 def __init__(self, *args: Any, **kwargs: Any) -> None:
     super().__init__(REFERENCE_RE, *args, **kwargs)
-
 ```
 
 ### hook
 
 ```
 hook: AutorefsHookInterface | None = None
-
 ```
 
 The hook to use for expanding identifiers or adding context to autorefs.
@@ -849,7 +802,6 @@ The hook to use for expanding identifiers or adding context to autorefs.
 
 ```
 name: str = 'mkdocs-autorefs'
-
 ```
 
 The name of the inline processor.
@@ -860,7 +812,6 @@ The name of the inline processor.
 handleMatch(
     m: Match[str], data: str
 ) -> tuple[Element | None, int | None, int | None]
-
 ```
 
 Handle an element that matched.
@@ -901,14 +852,12 @@ def handleMatch(self, m: Match[str], data: str) -> tuple[Element | None, int | N
         return None, m.start(0), end
 
     return self._make_tag(identifier, text, slug=slug), m.start(0), end
-
 ```
 
 ## AutorefsPlugin
 
 ```
 AutorefsPlugin()
-
 ```
 
 Bases: `BasePlugin[AutorefsConfig]`
@@ -988,14 +937,12 @@ def __init__(self) -> None:
 
     self._link_titles: bool | Literal["external"] = True
     self._strip_title_tags: bool = False
-
 ```
 
 ### current_page
 
 ```
 current_page: Page | None = None
-
 ```
 
 The current page being processed.
@@ -1004,7 +951,6 @@ The current page being processed.
 
 ```
 get_fallback_anchor: Callable[[str], tuple[str, ...]] | None
-
 ```
 
 Fallback anchors getter.
@@ -1013,7 +959,6 @@ Fallback anchors getter.
 
 ```
 legacy_refs: bool = True
-
 ```
 
 Whether to support legacy references.
@@ -1022,7 +967,6 @@ Whether to support legacy references.
 
 ```
 record_backlinks: bool = False
-
 ```
 
 Whether to record backlinks.
@@ -1031,7 +975,6 @@ Whether to record backlinks.
 
 ```
 scan_toc: bool = True
-
 ```
 
 Whether to scan the table of contents for identifiers to map to URLs.
@@ -1042,7 +985,6 @@ Whether to scan the table of contents for identifiers to map to URLs.
 get_backlinks(
     *identifiers: str, from_url: str
 ) -> dict[str, set[Backlink]]
-
 ```
 
 Return the backlinks to an identifier relative to the given URL.
@@ -1076,9 +1018,9 @@ def get_backlinks(self, *identifiers: str, from_url: str) -> dict[str, set[Backl
         backlinks = self._backlinks.get(identifier, {})
         for backlink_type, backlink_urls in backlinks.items():
             for backlink_url in backlink_urls:
-                relative_backlinks[backlink_type].add(self._get_backlink(from_url, backlink_url))
+                if backlink := self._get_backlink(from_url, backlink_url):
+                    relative_backlinks[backlink_type].add(backlink)
     return relative_backlinks
-
 ```
 
 ### get_item_url
@@ -1089,7 +1031,6 @@ get_item_url(
     from_url: str | None = None,
     fallback: Callable[[str], Sequence[str]] | None = None,
 ) -> tuple[str, str | None]
-
 ```
 
 Return a site-relative URL with anchor to the identifier, if it's present anywhere.
@@ -1130,14 +1071,12 @@ def get_item_url(
         if not parsed.scheme and not parsed.netloc:
             url = relative_url(from_url, url)
     return url, title
-
 ```
 
 ### map_urls
 
 ```
 map_urls(page: Page, anchor: AnchorLink) -> None
-
 ```
 
 Recurse on every anchor to map its ID to its absolute URL.
@@ -1162,14 +1101,12 @@ def map_urls(self, page: Page, anchor: AnchorLink) -> None:
         anchor: The anchor to process and to recurse on.
     """
     return self._map_urls(page, anchor)
-
 ```
 
 ### on_config
 
 ```
 on_config(config: MkDocsConfig) -> MkDocsConfig | None
-
 ```
 
 Instantiate our Markdown extension.
@@ -1232,7 +1169,6 @@ def on_config(self, config: MkDocsConfig) -> MkDocsConfig | None:
         self._strip_title_tags = self.config.strip_title_tags
 
     return config
-
 ```
 
 ### on_env
@@ -1245,7 +1181,6 @@ on_env(
     config: MkDocsConfig,
     files: Files,
 ) -> Environment
-
 ```
 
 Apply cross-references and collect backlinks.
@@ -1322,7 +1257,6 @@ def on_env(self, env: Environment, /, *, config: MkDocsConfig, files: Files) -> 
                     )
 
     return env
-
 ```
 
 ### on_page_content
@@ -1331,7 +1265,6 @@ def on_env(self, env: Environment, /, *, config: MkDocsConfig, files: Files) -> 
 on_page_content(
     html: str, page: Page, **kwargs: Any
 ) -> str
-
 ```
 
 Map anchors to URLs.
@@ -1374,7 +1307,6 @@ def on_page_content(self, html: str, page: Page, **kwargs: Any) -> str:  # noqa:
         for item in page.toc.items:
             self.map_urls(page, item)
     return html
-
 ```
 
 ### on_page_markdown
@@ -1383,7 +1315,6 @@ def on_page_content(self, html: str, page: Page, **kwargs: Any) -> str:  # noqa:
 on_page_markdown(
     markdown: str, page: Page, **kwargs: Any
 ) -> str
-
 ```
 
 Remember which page is the current one.
@@ -1417,7 +1348,6 @@ def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # 
     self._url_to_page[page.url] = page
     self.current_page = page
     return markdown
-
 ```
 
 ### register_anchor
@@ -1431,7 +1361,6 @@ register_anchor(
     title: str | None = None,
     primary: bool = True,
 ) -> None
-
 ```
 
 Register that an anchor corresponding to an identifier was encountered when rendering the page.
@@ -1470,7 +1399,7 @@ def register_anchor(
         try:
             page = self._url_to_page[page]
         except KeyError:
-            page = self.current_page
+            page = self.current_page  # type: ignore[assignment]
 
     url = f"{page.url}#{anchor or identifier}"
     url_map = self._primary_url_map if primary else self._secondary_url_map
@@ -1481,14 +1410,12 @@ def register_anchor(
         url_map[identifier] = [url]
     if title and url not in self._title_map:
         self._title_map[url] = title
-
 ```
 
 ### register_url
 
 ```
 register_url(identifier: str, url: str) -> None
-
 ```
 
 Register that the identifier should be turned into a link to this URL.
@@ -1509,14 +1436,12 @@ def register_url(self, identifier: str, url: str) -> None:
         url: The absolute URL (including anchor, if needed) where this item can be found.
     """
     self._abs_url_map[identifier] = url
-
 ```
 
 ## Backlink
 
 ```
 Backlink(crumbs: tuple[BacklinkCrumb, ...])
-
 ```
 
 A backlink (list of breadcrumbs).
@@ -1529,7 +1454,6 @@ Attributes:
 
 ```
 crumbs: tuple[BacklinkCrumb, ...]
-
 ```
 
 The list of breadcrumbs.
@@ -1542,7 +1466,6 @@ BacklinkCrumb(
     url: str,
     parent: BacklinkCrumb | None = None,
 )
-
 ```
 
 A navigation breadcrumb for a backlink.
@@ -1561,7 +1484,6 @@ Attributes:
 
 ```
 parent: BacklinkCrumb | None = None
-
 ```
 
 The parent breadcrumb.
@@ -1570,7 +1492,6 @@ The parent breadcrumb.
 
 ```
 title: str
-
 ```
 
 The title of the breadcrumb.
@@ -1579,7 +1500,6 @@ The title of the breadcrumb.
 
 ```
 url: str
-
 ```
 
 The URL of the breadcrumb.
@@ -1588,7 +1508,6 @@ The URL of the breadcrumb.
 
 ```
 __eq__(value: object) -> bool
-
 ```
 
 Compare URLs for equality.
@@ -1601,7 +1520,6 @@ def __eq__(self, value: object) -> bool:
     if isinstance(value, BacklinkCrumb):
         return self.url == value.url
     return False
-
 ```
 
 ## BacklinksTreeProcessor
@@ -1610,7 +1528,6 @@ def __eq__(self, value: object) -> bool:
 BacklinksTreeProcessor(
     plugin: AutorefsPlugin, md: Markdown | None = None
 )
-
 ```
 
 Bases: `Treeprocessor`
@@ -1644,14 +1561,12 @@ def __init__(self, plugin: AutorefsPlugin, md: Markdown | None = None) -> None:
     super().__init__(md)
     self._plugin = plugin
     self._last_heading_id: str | None = None
-
 ```
 
 ### initial_id
 
 ```
 initial_id: str | None = None
-
 ```
 
 The initial heading ID.
@@ -1660,7 +1575,6 @@ The initial heading ID.
 
 ```
 name: str = 'mkdocs-autorefs-backlinks'
-
 ```
 
 The name of the tree processor.
@@ -1669,7 +1583,6 @@ The name of the tree processor.
 
 ```
 run(root: Element) -> None
-
 ```
 
 Run the tree processor.
@@ -1690,7 +1603,6 @@ def run(self, root: Element) -> None:
     if self._plugin.current_page is not None:
         self._last_heading_id = self.initial_id
         self._enhance_autorefs(root)
-
 ```
 
 ## fix_ref
@@ -1705,7 +1617,6 @@ fix_ref(
     link_titles: bool | Literal["external"] = True,
     strip_title_tags: bool = False,
 ) -> Callable
-
 ```
 
 Return a `repl` function for [`re.sub`](https://docs.python.org/3/library/re.html#re.sub).
@@ -1815,7 +1726,6 @@ def fix_ref(
         return f'<a class="{class_attr}"{title_attr} href="{escape(url)}"{remaining}>{title}</a>'
 
     return inner
-
 ```
 
 ## fix_refs
@@ -1831,7 +1741,6 @@ fix_refs(
     strip_title_tags: bool = False,
     _legacy_refs: bool = True,
 ) -> tuple[str, list[tuple[str, Context | None]]]
-
 ```
 
 Fix all references in the given HTML text.
@@ -1885,14 +1794,12 @@ def fix_refs(
         html = AUTO_REF_RE.sub(_legacy_fix_ref(url_mapper, unmapped), html)
 
     return html, unmapped
-
 ```
 
 ## relative_url
 
 ```
 relative_url(url_a: str, url_b: str) -> str
-
 ```
 
 Compute the relative path from URL A to URL B.
@@ -1934,5 +1841,4 @@ def relative_url(url_a: str, url_b: str) -> str:
     parts_relative = [".."] * levels + parts_b
     relative = "/".join(parts_relative)
     return f"{relative}#{anchor}"
-
 ```
