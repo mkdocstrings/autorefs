@@ -383,12 +383,16 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             backlinks = self._backlinks.get(identifier, {})
             for backlink_type, backlink_urls in backlinks.items():
                 for backlink_url in backlink_urls:
-                    relative_backlinks[backlink_type].add(self._get_backlink(from_url, backlink_url))
+                    if backlink := self._get_backlink(from_url, backlink_url):
+                        relative_backlinks[backlink_type].add(backlink)
         return relative_backlinks
 
-    def _get_backlink(self, from_url: str, backlink_url: str) -> Backlink:
+    def _get_backlink(self, from_url: str, backlink_url: str) -> Backlink | None:
         breadcrumbs = []
-        breadcrumb: BacklinkCrumb | None = self._breadcrumbs_map[backlink_url]
+        breadcrumb: BacklinkCrumb | None
+        if not (breadcrumb := self._breadcrumbs_map.get(backlink_url)):
+            _log.debug("No breadcrumb for backlink URL %s", backlink_url)
+            return None
         while breadcrumb:
             breadcrumbs.append(
                 BacklinkCrumb(
