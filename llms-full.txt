@@ -47,6 +47,10 @@ This works the same as [a normal link to that heading](../doc1.md#hello-world).
 
 Linking to a heading without needing to know the destination page can be useful if specifying that path is cumbersome, e.g. when the pages have deeply nested paths, are far apart, or are moved around frequently.
 
+Finding the anchor of a heading
+
+To find the anchor for a specific heading, the easiest way is to serve your docs, go to that heading, click its permalink if there's one, and copy the anchor from the browser URL bar. If the heading doesn't have a permalink, the anchor can be retrieved from the HTML directly (by inspecting the source of the page): it's the `id` attribute of the heading. Generally though, anchors are generated from heading titles by "slugifying" them, i.e. transforming them to lowercase, removing special characters, and replacing spaces with dashes. For example a heading like `` ## Hello *World* (and 2 other `things`) `` will be slugified to `hello-world-and-2-other-things`.
+
 ### Non-unique headings
 
 When linking to a heading that appears several times throughout the site, this plugin will log a warning message stating that multiple URLs were found and that headings should be made unique, and will resolve the link using the first found URL.
