@@ -20,6 +20,7 @@ Classes:
 - **`Backlink`** – A backlink (list of breadcrumbs).
 - **`BacklinkCrumb`** – A navigation breadcrumb for a backlink.
 - **`BacklinksTreeProcessor`** – Enhance autorefs with backlink-type and backlink-anchor attributes.
+- **`HeadingScannerTreeProcessor`** – Tree processor to scan and register HTML headings.
 
 Functions:
 
@@ -279,6 +280,13 @@ def extendMarkdown(self, md: Markdown) -> None:  # noqa: N802 (casing: parent me
         priority=168,  # Right after markdown.inlinepatterns.ReferenceInlineProcessor
     )
     if self.plugin is not None:
+        # Scan headings to register them.
+        if self.plugin.scan_toc:
+            md.treeprocessors.register(
+                HeadingScannerTreeProcessor(self.plugin, md),
+                HeadingScannerTreeProcessor.name,
+                priority=0,
+            )
         # Markdown anchors require the `attr_list` extension.
         if self.plugin.scan_toc and "attr_list" in md.treeprocessors:
             _log_enabling_markdown_anchors()
@@ -522,7 +530,7 @@ Returns:
 Source code in `src/mkdocs_autorefs/_internal/references.py`
 
 ```
-def handleMatch(self, m: Match[str], data: str) -> tuple[Element | None, int | None, int | None]:  # type: ignore[override]  # noqa: N802
+def handleMatch(self, m: Match[str], data: str) -> tuple[Element | None, int | None, int | None]:  # noqa: N802
     """Handle an element that matched.
 
     Arguments:
@@ -570,10 +578,10 @@ Methods:
 
 - **`get_backlinks`** – Return the backlinks to an identifier relative to the given URL.
 - **`get_item_url`** – Return a site-relative URL with anchor to the identifier, if it's present anywhere.
-- **`map_urls`** – Recurse on every anchor to map its ID to its absolute URL.
+- **`map_urls`** – Deprecated. Recurse on every anchor to map its ID to its absolute URL.
 - **`on_config`** – Instantiate our Markdown extension.
 - **`on_env`** – Apply cross-references and collect backlinks.
-- **`on_page_content`** – Map anchors to URLs.
+- **`on_page_content`** – Register breadcrumbs.
 - **`on_page_markdown`** – Remember which page is the current one.
 - **`register_anchor`** – Register that an anchor corresponding to an identifier was encountered when rendering the page.
 - **`register_url`** – Register that the identifier should be turned into a link to this URL.
@@ -773,7 +781,9 @@ def get_item_url(
 map_urls(page: Page, anchor: AnchorLink) -> None
 ```
 
-Recurse on every anchor to map its ID to its absolute URL.
+Deprecated. Recurse on every anchor to map its ID to its absolute URL.
+
+This method is deprecated and will be removed in a future release. Please use the `register_anchor` or `register_url` methods instead.
 
 This method populates `self._primary_url_map` by side-effect.
 
@@ -786,7 +796,10 @@ Source code in `src/mkdocs_autorefs/_internal/plugin.py`
 
 ```
 def map_urls(self, page: Page, anchor: AnchorLink) -> None:
-    """Recurse on every anchor to map its ID to its absolute URL.
+    """Deprecated. Recurse on every anchor to map its ID to its absolute URL.
+
+    This method is deprecated and will be removed in a future release.
+    Please use the `register_anchor` or `register_url` methods instead.
 
     This method populates `self._primary_url_map` by side-effect.
 
@@ -794,7 +807,13 @@ def map_urls(self, page: Page, anchor: AnchorLink) -> None:
         page: The page containing the anchors.
         anchor: The anchor to process and to recurse on.
     """
-    return self._map_urls(page, anchor)
+    warn(
+        "The `map_urls` method is deprecated and will be removed in a future release. "
+        "Please use the `register_anchor` or `register_url` methods instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    self._map_urls(page, anchor)
 ```
 
 ### on_config
@@ -924,10 +943,10 @@ def on_env(self, env: Environment, /, *, config: MkDocsConfig, files: Files) -> 
         if file.page and file.page.content:
             _log.debug("Applying cross-refs in page %s", file.page.file.src_path)
 
-            # YORE: Bump 2: Replace `, fallback=self.get_fallback_anchor` with `` within line.
             url_mapper = functools.partial(
                 self.get_item_url,
                 from_url=file.page.url,
+                # YORE: Bump 2: Remove line.
                 fallback=self.get_fallback_anchor,
             )
             backlink_recorder = (
@@ -961,9 +980,9 @@ on_page_content(
 ) -> str
 ```
 
-Map anchors to URLs.
+Register breadcrumbs.
 
-Hook for the [`on_page_content` event](https://www.mkdocs.org/user-guide/plugins/#on_page_content). In this hook, we map the IDs of every anchor found in the table of contents to the anchors absolute URLs. This mapping will be used later to fix unresolved reference of the form `[title][identifier]` or `[identifier][]`.
+Hook for the [`on_page_content` event](https://www.mkdocs.org/user-guide/plugins/#on_page_content). In this hook, we register breadcrumbs for each heading on each page. These breadcrumbs are used to provide contextual information in backlinks.
 
 Parameters:
 
@@ -973,18 +992,17 @@ Parameters:
 
 Returns:
 
-- `str` – The same HTML. We only use this hook to map anchors to URLs.
+- `str` – The same HTML.
 
 Source code in `src/mkdocs_autorefs/_internal/plugin.py`
 
 ```
 def on_page_content(self, html: str, page: Page, **kwargs: Any) -> str:  # noqa: ARG002
-    """Map anchors to URLs.
+    """Register breadcrumbs.
 
     Hook for the [`on_page_content` event](https://www.mkdocs.org/user-guide/plugins/#on_page_content).
-    In this hook, we map the IDs of every anchor found in the table of contents to the anchors absolute URLs.
-    This mapping will be used later to fix unresolved reference of the form `[title][identifier]` or
-    `[identifier][]`.
+    In this hook, we register breadcrumbs for each heading on each page.
+    These breadcrumbs are used to provide contextual information in backlinks.
 
     Arguments:
         html: HTML converted from Markdown.
@@ -992,14 +1010,12 @@ def on_page_content(self, html: str, page: Page, **kwargs: Any) -> str:  # noqa:
         kwargs: Additional arguments passed by MkDocs.
 
     Returns:
-        The same HTML. We only use this hook to map anchors to URLs.
+        The same HTML.
     """
     self.current_page = page
-    # Collect `std`-domain URLs.
-    if self.scan_toc:
-        _log.debug("Mapping identifiers to URLs for page %s", page.file.src_path)
+    if self.record_backlinks:
         for item in page.toc.items:
-            self.map_urls(page, item)
+            self._register_breadcrumbs(page, item)
     return html
 ```
 
@@ -1021,7 +1037,7 @@ Parameters:
 
 Returns:
 
-- `str` – The same Markdown. We only use this hook to keep a reference to the current page URL, used during Markdown conversion by the anchor scanner tree processor.
+- `str` – The same Markdown. We only use this hook to keep a reference to the current page URL, used during Markdown conversion by the anchor/heading scanner tree processors.
 
 Source code in `src/mkdocs_autorefs/_internal/plugin.py`
 
@@ -1036,7 +1052,7 @@ def on_page_markdown(self, markdown: str, page: Page, **kwargs: Any) -> str:  # 
 
     Returns:
         The same Markdown. We only use this hook to keep a reference to the current page URL,
-            used during Markdown conversion by the anchor scanner tree processor.
+            used during Markdown conversion by the anchor/heading scanner tree processors.
     """
     # YORE: Bump 2: Remove line.
     self._url_to_page[page.url] = page
@@ -1297,6 +1313,76 @@ def run(self, root: Element) -> None:
     if self._plugin.current_page is not None:
         self._last_heading_id = self.initial_id
         self._enhance_autorefs(root)
+```
+
+## HeadingScannerTreeProcessor
+
+```
+HeadingScannerTreeProcessor(
+    plugin: AutorefsPlugin, md: Markdown | None = None
+)
+```
+
+Bases: `Treeprocessor`
+
+Tree processor to scan and register HTML headings.
+
+Parameters:
+
+- **`plugin`** (`AutorefsPlugin`) – A reference to the autorefs plugin, to use its register_anchor method.
+
+Methods:
+
+- **`run`** – Run the tree processor.
+
+Attributes:
+
+- **`name`** (`str`) – The name of the tree processor.
+
+Source code in `src/mkdocs_autorefs/_internal/references.py`
+
+```
+def __init__(self, plugin: AutorefsPlugin, md: Markdown | None = None) -> None:
+    """Initialize the tree processor.
+
+    Parameters:
+        plugin: A reference to the autorefs plugin, to use its `register_anchor` method.
+    """
+    super().__init__(md)
+    self._plugin = plugin
+```
+
+### name
+
+```
+name: str = 'mkdocs-autorefs-headings-scanner'
+```
+
+The name of the tree processor.
+
+### run
+
+```
+run(root: Element) -> None
+```
+
+Run the tree processor.
+
+Parameters:
+
+- **`root`** (`Element`) – The root element of the tree.
+
+Source code in `src/mkdocs_autorefs/_internal/references.py`
+
+```
+def run(self, root: Element) -> None:
+    """Run the tree processor.
+
+    Arguments:
+        root: The root element of the tree.
+    """
+    if self._plugin.current_page is not None:
+        self._scan_headings(root)
 ```
 
 ## fix_ref
