@@ -86,6 +86,7 @@ maintain = [
 ci = [
     "duty>=1.6",
     "griffe>=2.0",
+    "mkdocs-material>=9.7",
     "pytest>=8.2",
     "pytest-cov>=5.0",
     "pytest-randomly>=3.15",

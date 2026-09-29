@@ -163,7 +163,10 @@ configurations = [{targets.include = ["reference/api.md"]}]
 # ----------------------------------------------------------------------------
 [project.plugins.mkdocstrings.handlers.python]
 paths = ["src"]
-inventories = ["https://docs.python.org/3/objects.inv"]
+inventories = [
+    "https://docs.python.org/3/objects.inv",
+    "https://python-markdown.github.io/objects.inv",
+]
 
 [project.plugins.mkdocstrings.handlers.python.options]
 backlinks = "tree"

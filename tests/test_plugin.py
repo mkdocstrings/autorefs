@@ -1,3 +1,21 @@
+# SPDX-License-Identifier: ISC
+#
+# ISC License
+#
+# Copyright (c) 2019, Timothée Mazzucotelli, Oleh Prypin and contributors
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 """Tests for the plugin module."""
 
 from __future__ import annotations
@@ -104,7 +122,7 @@ def test_register_secondary_url() -> None:
 def test_warn_multiple_urls(caplog: pytest.LogCaptureFixture, primary: bool) -> None:
     """Warn when multiple URLs are found for the same identifier."""
     plugin = AutorefsPlugin()
-    plugin.config = AutorefsConfig()
+    plugin.config = AutorefsConfig()  # ty:ignore[invalid-assignment]
     plugin.register_anchor(identifier="foo", page=create_page("foo.html"), primary=primary)
     plugin.register_anchor(identifier="foo", page=create_page("bar.html"), primary=primary)
     url_mapper = functools.partial(plugin.get_item_url, from_url="/hello")
@@ -118,7 +136,7 @@ def test_warn_multiple_urls(caplog: pytest.LogCaptureFixture, primary: bool) -> 
 def test_use_closest_url(caplog: pytest.LogCaptureFixture, primary: bool) -> None:
     """Use the closest URL when multiple URLs are found for the same identifier."""
     plugin = AutorefsPlugin()
-    plugin.config = AutorefsConfig()
+    plugin.config = AutorefsConfig()  # ty:ignore[invalid-assignment]
     plugin.config.resolve_closest = True
     plugin.register_anchor(identifier="foo", page=create_page("foo.html"), primary=primary)
     plugin.register_anchor(identifier="foo", page=create_page("bar.html"), primary=primary)
@@ -132,38 +150,38 @@ def test_use_closest_url(caplog: pytest.LogCaptureFixture, primary: bool) -> Non
 def test_on_config_hook() -> None:
     """Check that the `on_config` hook runs without issue."""
     plugin = AutorefsPlugin()
-    plugin.config = AutorefsConfig()
-    plugin.on_config(config=MkDocsConfig())
+    plugin.config = AutorefsConfig()  # ty:ignore[invalid-assignment]
+    plugin.on_config(config=MkDocsConfig())  # ty:ignore[invalid-argument-type]
 
 
 def test_auto_link_titles_external() -> None:
     """Check that `link_titles` are made external when automatic and Material is detected."""
     plugin = AutorefsPlugin()
-    plugin.config = AutorefsConfig()
+    plugin.config = AutorefsConfig()  # ty:ignore[invalid-assignment]
     plugin.config.link_titles = "auto"
     config = MkDocsConfig()
-    config.theme = Theme(name="material", features=["navigation.instant.preview"])
-    plugin.on_config(config=config)
+    config.theme = Theme(name="material", features=["navigation.instant.preview"])  # ty:ignore[unresolved-attribute]
+    plugin.on_config(config=config)  # ty:ignore[invalid-argument-type]
     assert plugin._link_titles == "external"
 
 
 def test_auto_link_titles() -> None:
     """Check that `link_titles` are made true when automatic and Material is not detected."""
     plugin = AutorefsPlugin()
-    plugin.config = AutorefsConfig()
+    plugin.config = AutorefsConfig()  # ty:ignore[invalid-assignment]
     plugin.config.link_titles = "auto"
     config = MkDocsConfig()
 
-    config.theme = Theme(name="material", features=[])
-    plugin.on_config(config=config)
+    config.theme = Theme(name="material", features=[])  # ty:ignore[unresolved-attribute]
+    plugin.on_config(config=config)  # ty:ignore[invalid-argument-type]
     assert plugin._link_titles is True
 
-    config.theme = Theme("mkdocs")
-    plugin.on_config(config=config)
+    config.theme = Theme("mkdocs")  # ty:ignore[unresolved-attribute]
+    plugin.on_config(config=config)  # ty:ignore[invalid-argument-type]
     assert plugin._link_titles is True
 
-    config.theme = Theme("readthedocs")
-    plugin.on_config(config=config)
+    config.theme = Theme("readthedocs")  # ty:ignore[unresolved-attribute]
+    plugin.on_config(config=config)  # ty:ignore[invalid-argument-type]
     assert plugin._link_titles is True
 
 
@@ -171,40 +189,40 @@ def test_auto_link_titles() -> None:
 def test_explicit_link_titles(link_titles: bool | Literal["external"]) -> None:
     """Check that explicit `link_titles` are kept unchanged."""
     plugin = AutorefsPlugin()
-    plugin.config = AutorefsConfig()
+    plugin.config = AutorefsConfig()  # ty:ignore[invalid-assignment]
     plugin.config.link_titles = link_titles
-    plugin.on_config(config=MkDocsConfig())
+    plugin.on_config(config=MkDocsConfig())  # ty:ignore[invalid-argument-type]
     assert plugin._link_titles is link_titles
 
 
 def test_auto_strip_title_tags_false() -> None:
     """Check that `strip_title_tags` is made false when Material is detected."""
     plugin = AutorefsPlugin()
-    plugin.config = AutorefsConfig()
+    plugin.config = AutorefsConfig()  # ty:ignore[invalid-assignment]
     plugin.config.strip_title_tags = "auto"
     config = MkDocsConfig()
-    config.theme = Theme(name="material", features=["content.tooltips"])
-    plugin.on_config(config=config)
+    config.theme = Theme(name="material", features=["content.tooltips"])  # ty:ignore[unresolved-attribute]
+    plugin.on_config(config=config)  # ty:ignore[invalid-argument-type]
     assert plugin._strip_title_tags is False
 
 
 def test_auto_strip_title_tags_true() -> None:
     """Check that `strip_title_tags` are made true when automatic and Material is not detected."""
     plugin = AutorefsPlugin()
-    plugin.config = AutorefsConfig()
+    plugin.config = AutorefsConfig()  # ty:ignore[invalid-assignment]
     plugin.config.strip_title_tags = "auto"
     config = MkDocsConfig()
 
-    config.theme = Theme(name="material", features=[])
-    plugin.on_config(config=config)
+    config.theme = Theme(name="material", features=[])  # ty:ignore[unresolved-attribute]
+    plugin.on_config(config=config)  # ty:ignore[invalid-argument-type]
     assert plugin._strip_title_tags is True
 
-    config.theme = Theme("mkdocs")
-    plugin.on_config(config=config)
+    config.theme = Theme("mkdocs")  # ty:ignore[unresolved-attribute]
+    plugin.on_config(config=config)  # ty:ignore[invalid-argument-type]
     assert plugin._strip_title_tags is True
 
-    config.theme = Theme("readthedocs")
-    plugin.on_config(config=config)
+    config.theme = Theme("readthedocs")  # ty:ignore[unresolved-attribute]
+    plugin.on_config(config=config)  # ty:ignore[invalid-argument-type]
     assert plugin._strip_title_tags is True
 
 
@@ -212,7 +230,7 @@ def test_auto_strip_title_tags_true() -> None:
 def test_explicit_strip_tags(strip_title_tags: bool) -> None:
     """Check that explicit `_strip_title_tags` are kept unchanged."""
     plugin = AutorefsPlugin()
-    plugin.config = AutorefsConfig()
+    plugin.config = AutorefsConfig()  # ty:ignore[invalid-assignment]
     plugin.config.strip_title_tags = strip_title_tags
-    plugin.on_config(config=MkDocsConfig())
+    plugin.on_config(config=MkDocsConfig())  # ty:ignore[invalid-argument-type]
     assert plugin._strip_title_tags is strip_title_tags

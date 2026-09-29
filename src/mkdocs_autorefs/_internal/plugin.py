@@ -1,3 +1,21 @@
+# SPDX-License-Identifier: ISC
+#
+# ISC License
+#
+# Copyright (c) 2019, Timothée Mazzucotelli, Oleh Prypin and contributors
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 # This module contains the "mkdocs-autorefs" plugin.
 #
 # After each page is processed by the Markdown converter, this plugin stores absolute URLs of every HTML anchors
@@ -13,7 +31,7 @@ import functools
 import logging
 from collections import defaultdict
 from pathlib import PurePosixPath as URL  # noqa: N814
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlsplit
 from warnings import warn
 
@@ -26,7 +44,7 @@ from mkdocs_autorefs._internal.backlinks import Backlink, BacklinkCrumb
 from mkdocs_autorefs._internal.references import AutorefsExtension, fix_refs, relative_url
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from jinja2.environment import Environment
     from mkdocs.config.defaults import MkDocsConfig
@@ -46,7 +64,7 @@ except ImportError:
 class AutorefsConfig(Config):
     """Configuration options for the `autorefs` plugin."""
 
-    resolve_closest: bool = Type(bool, default=False)  # type: ignore[assignment]
+    resolve_closest: bool = Type(bool, default=False)  # ty:ignore[invalid-assignment]
     """Whether to resolve an autoref to the closest URL when multiple URLs are found for an identifier.
 
     By closest, we mean a combination of "relative to the current page" and "shortest distance from the current page".
@@ -61,7 +79,7 @@ class AutorefsConfig(Config):
     When false and multiple URLs are found for an identifier, autorefs will log a warning and resolve to the first URL.
     """
 
-    link_titles: bool | Literal["auto", "external"] = Choice((True, False, "auto", "external"), default="auto")  # type: ignore[assignment]
+    link_titles: bool | Literal["auto", "external"] = Choice((True, False, "auto", "external"), default="auto")  # ty:ignore[invalid-assignment]
     """Whether to set titles on links.
 
     Such title attributes are displayed as tooltips when hovering over the links.
@@ -77,7 +95,7 @@ class AutorefsConfig(Config):
     optionally appending the identifier for API objects.
     """
 
-    strip_title_tags: bool | Literal["auto"] = Choice((True, False, "auto"), default="auto")  # type: ignore[assignment]
+    strip_title_tags: bool | Literal["auto"] = Choice((True, False, "auto"), default="auto")  # ty:ignore[invalid-assignment]
     """Whether to strip HTML tags from link titles.
 
     Some themes support HTML in link titles, but others do not.
@@ -169,13 +187,13 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             The modified config.
         """
         _log.debug("Adding AutorefsExtension to the list")
-        config.markdown_extensions.append(AutorefsExtension(self))  # type: ignore[arg-type]
+        config.markdown_extensions.append(AutorefsExtension(self))  # ty:ignore[invalid-argument-type]
 
         # YORE: Bump 2: Remove block.
         # mkdocstrings still uses the `page` attribute as a string.
         # Fortunately, it does so in f-strings, so we can simply patch the `__str__` method
         # to render the URL.
-        Page.__str__ = lambda page: page.url  # type: ignore[method-assign,attr-defined]
+        Page.__str__ = lambda page: page.url  # ty:ignore[invalid-assignment,unresolved-attribute]
 
         if self.config.link_titles == "auto":
             if getattr(config.theme, "name", None) == "material" and "navigation.instant.preview" in config.theme.get(
@@ -323,10 +341,10 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             try:
                 page = self._url_to_page[page]
             except KeyError:
-                page = self.current_page  # type: ignore[assignment]
+                page = self.current_page  # ty:ignore[invalid-assignment]
 
-        self.register_anchor(page, anchor.id, title=anchor.title, primary=True)  # type: ignore[arg-type]
-        self._register_breadcrumbs(page, anchor)  # type: ignore[arg-type]
+        self.register_anchor(page, anchor.id, title=anchor.title, primary=True)  # ty:ignore[invalid-argument-type]
+        self._register_breadcrumbs(page, anchor)  # ty:ignore[invalid-argument-type]
 
     def _register_breadcrumbs(self, page: Page, anchor: AnchorLink, parent: BacklinkCrumb | None = None) -> None:
         # Getting a breadcrumb has a side-effect of registering it in the breadcrumbs map.
@@ -354,7 +372,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
                 parent = BacklinkCrumb(title=page.title, url="", parent=parent_breadcrumb)
         if anchor is None:
             return parent
-        if (url := f"{page.url}#{anchor.id}") not in self._breadcrumbs_map:  # type: ignore[union-attr]
+        if (url := f"{page.url}#{anchor.id}") not in self._breadcrumbs_map:  # ty:ignore[unresolved-attribute]
             # Skip the parent page if the anchor is a top-level heading, to reduce repetition.
             if anchor.level == 1:
                 parent = parent.parent
@@ -437,7 +455,7 @@ class AutorefsPlugin(BasePlugin[AutorefsConfig]):
             try:
                 page = self._url_to_page[page]
             except KeyError:
-                page = self.current_page  # type: ignore[assignment]
+                page = self.current_page  # ty:ignore[invalid-assignment]
 
         url = f"{page.url}#{anchor or identifier}"
         url_map = self._primary_url_map if primary else self._secondary_url_map
