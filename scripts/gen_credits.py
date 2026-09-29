@@ -1,8 +1,25 @@
+# SPDX-License-Identifier: ISC
+#
+# ISC License
+#
+# Copyright (c) 2019, Timothée Mazzucotelli, Oleh Prypin and contributors
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 # Script to generate the project's credits.
 
 from __future__ import annotations
 
-import os
 import sys
 from collections import defaultdict
 from collections.abc import Iterable
@@ -10,7 +27,6 @@ from importlib.metadata import distributions
 from itertools import chain
 from pathlib import Path
 from textwrap import dedent
-from typing import Union
 
 from jinja2 import StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
@@ -22,14 +38,14 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-project_dir = Path(os.getenv("MKDOCS_CONFIG_DIR", "."))
+project_dir = Path.cwd()
 with project_dir.joinpath("pyproject.toml").open("rb") as pyproject_file:
     pyproject = tomllib.load(pyproject_file)
 project = pyproject["project"]
 project_name = project["name"]
 devdeps = [dep for group in pyproject["dependency-groups"].values() for dep in group if not dep.startswith("-e")]
 
-PackageMetadata = dict[str, Union[str, Iterable[str]]]
+PackageMetadata = dict[str, str | Iterable[str]]
 Metadata = dict[str, PackageMetadata]
 
 
@@ -55,7 +71,7 @@ def _extra_marker(req: Requirement) -> str | None:
     if not req.marker:
         return None
     try:
-        return next(marker[2].value for marker in req.marker._markers if getattr(marker[0], "value", None) == "extra")
+        return next(marker[2].value for marker in req.marker._markers if getattr(marker[0], "value", None) == "extra")  # ty:ignore[unresolved-attribute]
     except StopIteration:
         return None
 

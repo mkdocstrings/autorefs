@@ -1,3 +1,21 @@
+# SPDX-License-Identifier: ISC
+#
+# ISC License
+#
+# Copyright (c) 2019, Timothée Mazzucotelli, Oleh Prypin and contributors
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 """Tests for our own API exposition."""
 
 from __future__ import annotations
@@ -141,7 +159,7 @@ def test_api_matches_inventory(inventory: Inventory, public_objects: list[griffe
         for obj in public_objects
         if obj.name not in ignore_names and obj.path not in inventory
     ]
-    msg = "Objects not in the inventory (try running `make run mkdocs build`):\n{paths}"
+    msg = "Objects not in the inventory (try running `make run zensical build --clean`):\n{paths}"
     assert not not_in_inventory, msg.format(paths="\n".join(sorted(not_in_inventory)))
 
 
@@ -154,7 +172,6 @@ def test_inventory_matches_api(
     not_in_api = []
     public_api_paths = {obj.path for obj in public_objects}
     public_api_paths.add("mkdocs_autorefs")
-    ignore = {"mkdocs_autorefs.plugin", "mkdocs_autorefs.references"}
     for item in inventory.values():
         if (
             item.domain == "py"
@@ -162,13 +179,9 @@ def test_inventory_matches_api(
             and (item.name == "mkdocs_autorefs" or item.name.startswith("mkdocs_autorefs."))
         ):
             obj = loader.modules_collection[item.name]
-            if (
-                obj.path not in ignore
-                and obj.path not in public_api_paths
-                and not any(path in public_api_paths for path in obj.aliases)
-            ):
+            if obj.path not in public_api_paths and not any(path in public_api_paths for path in obj.aliases):
                 not_in_api.append(item.name)
-    msg = "Inventory objects not in public API (try running `make run mkdocs build`):\n{paths}"
+    msg = "Inventory objects not in public API (try running `make run zensical build --clean`):\n{paths}"
     assert not not_in_api, msg.format(paths="\n".join(sorted(not_in_api)))
 
 
@@ -185,4 +198,4 @@ def test_no_module_docstrings_in_internal_api(internal_api: griffe.Module) -> No
             yield from _modules(member)
 
     for obj in _modules(internal_api):
-        assert not obj.docstring, f"Object {obj.path} has a docstring."
+        assert not obj.docstring

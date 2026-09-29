@@ -1,5 +1,6 @@
-target-version = "py39"
+target-version = "py310"
 line-length = 120
+output-format = "concise"
 
 [lint]
 exclude = [
@@ -25,7 +26,8 @@ ignore = [
     "PLR0913",  # Too many arguments to function call
     "PLR0915",  # Too many statements
     "SLF001", # Private member accessed
-    "TD",  # Missing author/issue in TODO, FIXME, etc.
+    "TD002",  # Missing author in TODO
+    "TD003",  # Missing issue link for TODO
     "TRY003",  # Avoid specifying long messages outside the exception class
 ]
 
