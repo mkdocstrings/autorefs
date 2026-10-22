@@ -21,7 +21,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar
 
 from markdown.core import Markdown
@@ -44,21 +44,19 @@ except ImportError:
 
 
 @dataclass(frozen=True, order=True)
-class BacklinkCrumb:  # noqa: PLW1641
-    """A navigation breadcrumb for a backlink."""
+class BacklinkCrumb:
+    """A navigation breadcrumb for a backlink.
+
+    Equality, hashing, and ordering use the title and URL. The backlink's crumbs
+    tuple already represents the hierarchy, so the parent is excluded.
+    """
 
     title: str
     """The title of the breadcrumb."""
     url: str
     """The URL of the breadcrumb."""
-    parent: BacklinkCrumb | None = None
+    parent: BacklinkCrumb | None = field(default=None, compare=False)
     """The parent breadcrumb."""
-
-    def __eq__(self, value: object) -> bool:
-        """Compare URLs for equality."""
-        if isinstance(value, BacklinkCrumb):
-            return self.url == value.url
-        return False
 
 
 @dataclass(eq=True, frozen=True, order=True)
