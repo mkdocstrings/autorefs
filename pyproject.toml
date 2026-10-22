@@ -12,7 +12,7 @@ authors = [
 license = "ISC"
 license-files = ["LICENSE"]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 keywords = ["mkdocs", "mkdocs-plugin", "docstrings", "autodoc"]
 dynamic = ["version"]
 classifiers = [
@@ -21,7 +21,6 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -103,8 +102,6 @@ ci = [
     "markdown-callouts>=0.4",
     "markdown-exec>=1.8",
     "mkdocstrings[python]>=0.29",
-    # YORE: EOL 3.10: Remove line.
-    "tomli>=2.0; python_version < '3.11'",
     "zensical>=0.0.21",
 ]
 

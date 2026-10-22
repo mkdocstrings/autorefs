@@ -644,7 +644,7 @@ def _find_url(
     for identifier in identifiers:
         try:
             return url_mapper(identifier)
-        except KeyError:  # noqa: PERF203
+        except KeyError:
             pass
     raise KeyError(f"None of the identifiers {identifiers} were found")
 
