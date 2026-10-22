@@ -20,6 +20,7 @@
 
 from __future__ import annotations
 
+from itertools import permutations
 from textwrap import dedent
 
 from markdown import Markdown
@@ -27,6 +28,35 @@ from markdown import Markdown
 from mkdocs_autorefs import AUTOREF_RE, AutorefsExtension, AutorefsPlugin, Backlink, BacklinkCrumb
 from mkdocs_autorefs._internal.references import _html_attrs_parser
 from tests.helpers import create_anchor_link, create_page
+
+
+def test_backlink_crumb_equality_matches_hash_and_order() -> None:
+    """Section titles distinguish crumbs, while parent links only provide traversal context."""
+    first = BacklinkCrumb("Examples", "")
+    second = BacklinkCrumb("Guides", "")
+    assert first != second
+    assert first < second
+    assert first != object()
+
+    other_parent = BacklinkCrumb("Examples", "", parent=BacklinkCrumb("Parent", ""))
+    assert first == other_parent
+    assert hash(first) == hash(other_parent)
+    assert {first, other_parent} == {first}
+    assert not first < other_parent
+    assert not other_parent < first
+
+
+def test_backlink_sorting_is_independent_of_input_order() -> None:
+    """Mixed navigation depths must not create a cycle in tuple comparisons."""
+    examples = Backlink((BacklinkCrumb("Examples", ""), BacklinkCrumb("Mid", "a/#mid")))
+    guides = Backlink(
+        (BacklinkCrumb("Guides", ""), BacklinkCrumb("Zeta", ""), BacklinkCrumb("Alpha", "b/#alpha")),
+    )
+    development = Backlink(
+        (BacklinkCrumb("Development", ""), BacklinkCrumb("Beta", ""), BacklinkCrumb("Omega", "c/#omega")),
+    )
+    for backlinks in permutations((examples, guides, development)):
+        assert sorted(backlinks, key=lambda backlink: backlink.crumbs) == [development, examples, guides]
 
 
 def test_record_backlinks() -> None:

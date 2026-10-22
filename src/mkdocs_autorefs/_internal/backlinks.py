@@ -21,7 +21,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar
 
 from markdown.core import Markdown
@@ -51,13 +51,13 @@ class BacklinkCrumb:  # noqa: PLW1641
     """The title of the breadcrumb."""
     url: str
     """The URL of the breadcrumb."""
-    parent: BacklinkCrumb | None = None
-    """The parent breadcrumb."""
+    parent: BacklinkCrumb | None = field(default=None, compare=False)
+    """The parent breadcrumb, for traversal rather than equality or ordering."""
 
     def __eq__(self, value: object) -> bool:
-        """Compare URLs for equality."""
+        """Compare titles and URLs, matching the generated hash and ordering."""
         if isinstance(value, BacklinkCrumb):
-            return self.url == value.url
+            return (self.title, self.url) == (value.title, value.url)
         return False
 
 
