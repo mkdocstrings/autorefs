@@ -81,7 +81,9 @@ def test_backlinks_sort_consistently() -> None:
     # Unequal navigation depths exposed a comparison cycle between these backlinks.
     examples = Backlink((BacklinkCrumb("Examples", ""), BacklinkCrumb("Mid", "a/#mid")))
     guides = Backlink((BacklinkCrumb("Guides", ""), BacklinkCrumb("Zeta", ""), BacklinkCrumb("Alpha", "b/#alpha")))
-    development = Backlink((BacklinkCrumb("Development", ""), BacklinkCrumb("Beta", ""), BacklinkCrumb("Omega", "c/#omega")))
+    development = Backlink(
+        (BacklinkCrumb("Development", ""), BacklinkCrumb("Beta", ""), BacklinkCrumb("Omega", "c/#omega")),
+    )
 
     for backlinks in permutations((examples, guides, development)):
         ordered = sorted(backlinks, key=lambda backlink: backlink.crumbs)
@@ -106,7 +108,12 @@ def test_backlink_crumb_page_and_first_heading() -> None:
 @pytest.mark.parametrize("heading_level", [1, 2])
 @pytest.mark.parametrize("heading_title", ["Guide", "First heading"])
 @pytest.mark.parametrize(("from_url", "prefix"), [("", ""), ("api/index.html", "../")])
-def test_get_backlinks_with_page_and_heading_crumbs(heading_level: int, heading_title: str, from_url: str, prefix: str) -> None:
+def test_get_backlinks_with_page_and_heading_crumbs(
+    heading_level: int,
+    heading_title: str,
+    from_url: str,
+    prefix: str,
+) -> None:
     """Preserve breadcrumb hierarchy and URLs with or without a top-level heading."""
     plugin = AutorefsPlugin()
     plugin.record_backlinks = True
