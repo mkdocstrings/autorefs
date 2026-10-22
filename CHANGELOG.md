@@ -5,6 +5,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [1.4.5](https://github.com/mkdocstrings/autorefs/releases/tag/1.4.5) - 2026-10-22
+
+<small>[Compare with 1.4.4](https://github.com/mkdocstrings/autorefs/compare/1.4.4...1.4.5)</small>
+
+### Build
+
+- Drop support for Python 3.10 ([06bbb4b](https://github.com/mkdocstrings/autorefs/commit/06bbb4bd80e991a03a88c310da89f64ade1ded51) by Timothée Mazzucotelli).
+
+### Bug Fixes
+
+- Fix breadcrumb ordering ([ce2f910](https://github.com/mkdocstrings/autorefs/commit/ce2f910fdc16d20c2be2cc7416dc29eaf01e14fb) by Timothée Mazzucotelli). [Issue-83](https://github.com/mkdocstrings/autorefs/issues/83)
+
 ## [1.4.4](https://github.com/mkdocstrings/autorefs/releases/tag/1.4.4) - 2026-02-10
 
 <small>[Compare with 1.4.3](https://github.com/mkdocstrings/autorefs/compare/1.4.3...1.4.4)</small>
